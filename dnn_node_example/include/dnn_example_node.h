@@ -46,23 +46,9 @@ using ai_msgs::msg::PerceptionTargets;
 // 用于算法推理的图片来源，0：本地图片；1：订阅到的image msg
 enum class DnnFeedType { FROM_LOCAL = 0, FROM_SUB = 1 };
 
-// 算法解析方法类型，通过解析算法配置文件中的"dnn_Parser"配置项确定类型
+// Simplify to only YOLOv8
 enum class DnnParserType {
-  INVALID_PARSER = 0,
-  YOLOV2_PARSER = 1,      // 对应dnn_node中yolov2的output_parser算法
-  YOLOV3_PARSER,          // 对应dnn_node中yolov3的output_parser算法
-  YOLOV5_PARSER,          // 对应dnn_node中yolov5的output_parser算法
-  YOLOV5X_PARSER,         // 对应dnn_node中yolov5x的output_Parser算法
-  YOLOV8_PARSER,          // 对应dnn_node中yolov8的output_parser算法
-  YOLOV10_PARSER,          // 对应dnn_node中yolov10的output_parser算法
-  CLASSIFICATION_PARSER,  // 对应dnn_node中classification的output_parser算法
-  SSD_PARSER,
-  EFFICIENTDET_PARSER,
-  FCOS_PARSER,
-  UNET_PARSER,
-  YOLOV8_SEG_PARSER,          // 对应dnn_node中yolov8_seg的output_parser算法
-  STDC_PARSER
-  /*define more*/
+  YOLOV8_PARSER  // Only keep YOLOv8 parser
 };
 
 // dnn node输出数据类型
@@ -102,7 +88,7 @@ class DnnExampleNode : public DnnNode {
   int LoadConfig();
   // 用于解析的配置文件，以及解析后的数据
   std::string config_file = "config/fcosworkconfig.json";
-  DnnParserType parser = DnnParserType::INVALID_PARSER;
+  DnnParserType parser = DnnParserType::YOLOV8_PARSER;
   std::string model_file_name_ = "";
   std::string model_name_ = "";
 

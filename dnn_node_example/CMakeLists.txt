@@ -110,10 +110,10 @@ link_directories(
   ${SYS_ROOT}/usr/hobot/lib/
 )
 
+# Only keep YOLOv8 related files
 add_library(${PROJECT_NAME}_component SHARED
   src/dnn_example_node.cpp
   src/image_utils.cpp
-  src/post_process/post_process_unet.cpp
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}_component
