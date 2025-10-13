@@ -28,19 +28,7 @@
 #include <unistd.h>
 
 #include "dnn_node/dnn_node.h"
-#include "dnn_node/util/output_parser/classification/ptq_classification_output_parser.h"
-#include "dnn_node/util/output_parser/detection/fcos_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_efficientdet_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_ssd_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_yolo2_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_yolo3_darknet_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_yolo5_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_yolov5x_output_parser.h"
 #include "dnn_node/util/output_parser/detection/ptq_yolo8_output_parser.h"
-#include "dnn_node/util/output_parser/detection/ptq_yolo10_output_parser.h"
-#include "dnn_node/util/output_parser/segmentation/ptq_unet_output_parser.h"
-#include "dnn_node/util/output_parser/segmentation/ptq_yolo8_seg_output_parser.h"
-#include "dnn_node/util/output_parser/segmentation/ptq_stdc_output_parser.h"
 
 #include "include/image_utils.h"
 #include "include/post_process/post_process_unet.h"
@@ -258,13 +246,14 @@ DnnExampleNode::DnnExampleNode(const NodeOptions &options,
 DnnExampleNode::~DnnExampleNode() {}
 
 int DnnExampleNode::LoadConfig() {
+  // Keep only YOLOv11 config parsing
   if (config_file.empty()) {
     RCLCPP_ERROR(this->get_logger(),
-                 "Config file [%s] is empty!",
+                 "Config file [%s] is empty!", 
                  config_file.data());
     return -1;
   }
-  // Parsing config
+
   std::ifstream ifs(config_file.c_str());
   if (!ifs) {
     RCLCPP_ERROR(this->get_logger(),
@@ -272,9 +261,11 @@ int DnnExampleNode::LoadConfig() {
                  config_file.data());
     return -1;
   }
+
   rapidjson::IStreamWrapper isw(ifs);
   rapidjson::Document document;
   document.ParseStream(isw);
+
   if (document.HasParseError()) {
     RCLCPP_ERROR(this->get_logger(),
                  "Parsing config file %s failed",
@@ -282,6 +273,7 @@ int DnnExampleNode::LoadConfig() {
     return -1;
   }
 
+  // Parse basic config
   if (document.HasMember("model_file")) {
     model_file_name_ = document["model_file"].GetString();
   }
@@ -292,116 +284,37 @@ int DnnExampleNode::LoadConfig() {
     task_num_ = document["task_num"].GetInt();
   }
 
-  int ret = 0;
-  // 更新parser，后处理中根据parser类型选择解析方法
-  if (document.HasMember("dnn_Parser")) {
-    std::string str_parser = document["dnn_Parser"].GetString();
-    if ("yolov2" == str_parser) {
-      parser = DnnParserType::YOLOV2_PARSER;
-      ret = hobot::dnn_node::parser_yolov2::LoadConfig(document);
-    } else if ("yolov3" == str_parser) {
-      parser = DnnParserType::YOLOV3_PARSER;
-      ret = hobot::dnn_node::parser_yolov3::LoadConfig(document);
-    } else if ("yolov8" == str_parser) {
-      parser = DnnParserType::YOLOV8_PARSER;
-      ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
-    } else if ("yolov10" == str_parser) {
-      parser = DnnParserType::YOLOV10_PARSER;
-      ret = hobot::dnn_node::parser_yolov10::LoadConfig(document);
-    } else if ("yolov11" == str_parser){
-      parser = DnnParserType::YOLOV8_PARSER;
-      ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
-#ifdef PLATFORM_X3
-    } else if ("yolov5" == str_parser) {
-      parser = DnnParserType::YOLOV5_PARSER;
-      ret = hobot::dnn_node::parser_yolov5::LoadConfig(document);
-    } else if ("efficient_det" == str_parser) {
-      parser = DnnParserType::EFFICIENTDET_PARSER;
-      if (document.HasMember("dequanti_file")) {
-        std::string dequanti_file = document["dequanti_file"].GetString();
-        if (hobot::dnn_node::parser_efficientdet::LoadDequantiFile(
-                dequanti_file) < 0) {
-          RCLCPP_WARN(this->get_logger(),
-                      "Load efficientdet dequanti file [%s] fail",
-                      dequanti_file.data());
-          return -1;
-        }
-      } else {
-        RCLCPP_WARN(this->get_logger(),
-                    "classification file is not set");
-      }
-#endif
-#ifdef PLATFORM_Rdkultra
-    } else if ("yolov5x" == str_parser) {
-      parser = DnnParserType::YOLOV5X_PARSER;
-      ret = hobot::dnn_node::parser_yolov5x::LoadConfig(document);
-#endif
-#ifdef PLATFORM_X5
-    } else if ("yolov5x" == str_parser) {
-      parser = DnnParserType::YOLOV5X_PARSER;
-      ret = hobot::dnn_node::parser_yolov5x::LoadConfig(document);
-    } else if ("stdc" == str_parser) {
-      parser = DnnParserType::STDC_PARSER;
-      ret = hobot::dnn_node::parser_stdc::LoadConfig(document);
-#endif
-#ifdef PLATFORM_S100
-    } else if ("yolov5x" == str_parser) {
-      parser = DnnParserType::YOLOV5X_PARSER;
-      ret = hobot::dnn_node::parser_yolov5x::LoadConfig(document);
-#endif
-    } else if ("classification" == str_parser) {
-      parser = DnnParserType::CLASSIFICATION_PARSER;
-      ret = hobot::dnn_node::parser_mobilenetv2::LoadConfig(document);
-    } else if ("ssd" == str_parser) {
-      parser = DnnParserType::SSD_PARSER;
-
-    } else if ("fcos" == str_parser) {
-      parser = DnnParserType::FCOS_PARSER;
-      ret = hobot::dnn_node::parser_fcos::LoadConfig(document);
-    } else if ("unet" == str_parser) {
-      parser = DnnParserType::UNET_PARSER;
-      ret = hobot::dnn_node::parser_unet::LoadConfig(document);
-    } else if ("yolov8_seg" == str_parser) {
-      parser = DnnParserType::YOLOV8_SEG_PARSER;
-      ret = hobot::dnn_node::parser_yolov8_seg::LoadConfig(document);
-    } else {
-      std::stringstream ss;
-      ss << "Error! Invalid parser: " << str_parser
-         << " . Only yolov2, yolov3, yolov5, yolov5x, yolov8, yolov10, ssd, fcos"
-         << " efficient_det, classification, unet, yolov8-seg are supported";
-      RCLCPP_ERROR(this->get_logger(), "%s", ss.str().c_str());
-      return -3;
-    }
-    if (ret < 0) {
-      RCLCPP_ERROR(this->get_logger(),
-                   "Load %s Parser config file fail",
-                   str_parser.data());
-      return -1;
-    }
+  // Set parser type to YOLOv11
+  parser = DnnParserType::YOLOV8_PARSER;
+  int ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
+  if (ret < 0) {
+    RCLCPP_ERROR(this->get_logger(),
+                  "Load %s Parser config file fail",
+                  str_parser.data());
+    return -1;
   }
-  
-  if (document.HasMember("cls_names_list")) {
-    if (!perception_info_msg_) {
-      RCLCPP_ERROR(this->get_logger(),
-                   "Invalid perception info msg");
-      return -1;
-    }
-    std::string cls_name_file = document["cls_names_list"].GetString();
-    std::ifstream fi(cls_name_file);
-    if (fi) {
-      perception_info_msg_->class_names.clear();
-      std::string line;
-      while (std::getline(fi, line)) {
-        perception_info_msg_->class_names.push_back(line);
+    if (document.HasMember("cls_names_list")) {
+      if (!perception_info_msg_) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Invalid perception info msg");
+        return -1;
       }
-      RCLCPP_WARN(this->get_logger(), "Load [%d] class types from file [%s]",
-        perception_info_msg_->class_names.size(), cls_name_file.c_str());
-    } else {
-      RCLCPP_ERROR(this->get_logger(),
-                  "can not open cls name file: %s",
-                  cls_name_file.c_str());
-      return -1;
-    }
+      std::string cls_name_file = document["cls_names_list"].GetString();
+      std::ifstream fi(cls_name_file);
+      if (fi) {
+        perception_info_msg_->class_names.clear();
+        std::string line;
+        while (std::getline(fi, line)) {
+          perception_info_msg_->class_names.push_back(line);
+        }
+        RCLCPP_WARN(this->get_logger(), "Load [%d] class types from file [%s]",
+          perception_info_msg_->class_names.size(), cls_name_file.c_str());
+      } else {
+        RCLCPP_ERROR(this->get_logger(),
+                    "can not open cls name file: %s",
+                    cls_name_file.c_str());
+        return -1;
+      }
   }
 
   return 0;
@@ -428,15 +341,15 @@ int DnnExampleNode::SetNodePara() {
 
 int DnnExampleNode::PostProcess(
     const std::shared_ptr<DnnNodeOutput> &node_output) {
-  if (!rclcpp::ok()) {
-    return -1;
-  }
+  if (!rclcpp::ok() || !node_output) return -1;
 
-  // 1. 记录后处理开始时间
+  // Record post-processing start time
   struct timespec time_start = {0, 0};
   clock_gettime(CLOCK_REALTIME, &time_start);
 
   auto parser_output = std::dynamic_pointer_cast<DnnExampleOutput>(node_output);
+
+  // Verify output tensors
   if (parser_output) {
     std::stringstream ss;
     ss << "Output from frame_id: " << parser_output->msg_header->frame_id
@@ -444,118 +357,31 @@ int DnnExampleNode::PostProcess(
        << parser_output->msg_header->stamp.nanosec;
     RCLCPP_INFO(this->get_logger(), "%s", ss.str().c_str());
   }
-
-  // 校验算法输出是否有效
   if (node_output->output_tensors.empty()) {
-    RCLCPP_ERROR(rclcpp::get_logger("PostProcessBase"),
-                 "Invalid node_output->output_tensors");
+    RCLCPP_ERROR(this->get_logger("PostProcessBase"), "Invalid output tensors");
     return -1;
   }
 
-  // 2. 解析后的结构化数据
+  // Parse YOLOv11 detection results 
   std::shared_ptr<DnnParserResult> det_result = nullptr;
-  int parse_ret = 0;
-  // 根据parser类型选择解析方法
-  switch (parser) {
-    case DnnParserType::YOLOV2_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov2::Parse(node_output, det_result);
-      break;
-    case DnnParserType::YOLOV3_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov3::Parse(node_output, det_result);
-      break;
-    case DnnParserType::YOLOV8_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov8::Parse(node_output, det_result);
-      break;
-    case DnnParserType::YOLOV10_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov10::Parse(node_output, det_result);
-      break;
-  #ifdef PLATFORM_X3
-    case DnnParserType::YOLOV5_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov5::Parse(node_output, det_result);
-      break;
-    case DnnParserType::EFFICIENTDET_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_efficientdet::Parse(node_output, det_result);
-      break;
-  #endif
-  #ifdef PLATFORM_Rdkultra
-    case DnnParserType::YOLOV5X_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov5x::Parse(node_output, det_result);
-      break;
-  #endif
-  #ifdef PLATFORM_X5
-    case DnnParserType::YOLOV5X_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov5x::Parse(node_output, det_result);
-      break;
-  #endif
-  #ifdef PLATFORM_S100
-    case DnnParserType::YOLOV5X_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_yolov5x::Parse(node_output, det_result);
-      break;
-  #endif
-    case DnnParserType::CLASSIFICATION_PARSER:
-      parse_ret =
-          hobot::dnn_node::parser_mobilenetv2::Parse(node_output, det_result);
-      break;
-    case DnnParserType::SSD_PARSER:
-      parse_ret = hobot::dnn_node::parser_ssd::Parse(node_output, det_result);
-      break;
-    case DnnParserType::FCOS_PARSER:
-      parse_ret = hobot::dnn_node::parser_fcos::Parse(node_output, det_result);
-      break;
-    case DnnParserType::UNET_PARSER:
-      parse_ret = hobot::dnn_node::parser_unet::Parse(node_output, 
-                                                      parser_output->resized_h, 
-                                                      parser_output->resized_w,
-                                                      parser_output->model_h,
-                                                      parser_output->model_w,
-                                                      det_result);
-      break;
-    case DnnParserType::YOLOV8_SEG_PARSER:
-      parse_ret = hobot::dnn_node::parser_yolov8_seg::Parse(node_output, 
-                                                            parser_output->resized_h, 
-                                                            parser_output->resized_w, 
-                                                            parser_output->model_h,
-                                                            parser_output->model_w,
-                                                            det_result);
-      break;
-    case DnnParserType::STDC_PARSER:
-      parse_ret = hobot::dnn_node::parser_stdc::Parse(node_output,
-                                                            parser_output->resized_h,
-                                                            parser_output->resized_w,
-                                                            parser_output->model_h,
-                                                            parser_output->model_w,
-                                                            det_result);
-      break;
-    default:
-      RCLCPP_ERROR(this->get_logger(), "Inlvaid parser: %d", parser);
-      return -1;
-  }
-
+  int parse_ret = hobot::dnn_node::parser_yolov8::Parse(node_output, det_result);
   if (parse_ret < 0) {
-    RCLCPP_ERROR(this->get_logger(), "Parse fail");
+    RCLCPP_ERROR(this->get_logger(), "YOLOv11 parse failed");
     return -1;
   }
 
-  // 3. 创建用于发布的AI消息
+  // Create AI message for publishing
   if (!msg_publisher_) {
     RCLCPP_ERROR(this->get_logger(), "Invalid msg_publisher_");
     return -1;
   }
-  ai_msgs::msg::PerceptionTargets::UniquePtr pub_data(
-      new ai_msgs::msg::PerceptionTargets());
+
+  auto pub_data = std::make_unique<ai_msgs::msg::PerceptionTargets>();
+
   // 3.1 发布检测AI消息
   RCLCPP_INFO(rclcpp::get_logger("PostProcessBase"),
               "out box size: %d",
-              det_result->perception.det.size());
+              det_result->perception.det.size());  
   for (auto &rect : det_result->perception.det) {
     if (rect.bbox.xmin < 0) rect.bbox.xmin = 0;
     if (rect.bbox.ymin < 0) rect.bbox.ymin = 0;
@@ -565,7 +391,6 @@ int DnnExampleNode::PostProcess(
     if (rect.bbox.ymax >= model_input_height_) {
       rect.bbox.ymax = model_input_height_ - 1;
     }
-
     std::stringstream ss;
     ss << "det rect: " << rect.bbox.xmin << " " << rect.bbox.ymin << " "
        << rect.bbox.xmax << " " << rect.bbox.ymax
@@ -586,74 +411,15 @@ int DnnExampleNode::PostProcess(
     pub_data->targets.emplace_back(std::move(target));
   }
 
-  // 3.2 发布分类AI消息
-  RCLCPP_INFO(rclcpp::get_logger("ClassificationPostProcess"),
-              "out cls size: %d",
-              det_result->perception.cls.size());
-  for (auto &cls : det_result->perception.cls) {
-    std::string clsname = cls.class_name;
-    std::stringstream ss;
-    ss << "class type:" << cls.class_name << ", score:" << cls.score;
-    RCLCPP_INFO(rclcpp::get_logger("ClassificationPostProcess"),
-                "%s",
-                ss.str().c_str());
 
-    auto xmin = model_input_width_ / 2;
-    auto ymin = model_input_height_ / 2;
-    ai_msgs::msg::Roi roi;
-    roi.rect.set__x_offset(xmin);
-    roi.rect.set__y_offset(ymin);
-    roi.rect.set__width(0);
-    roi.rect.set__height(0);
-
-    ai_msgs::msg::Target target;
-    target.set__type(cls.class_name);
-    target.rois.emplace_back(roi);
-    pub_data->targets.emplace_back(std::move(target));
-  }
-
-  // 3.3 发布分割AI消息
-  auto &seg = det_result->perception.seg;
-  if (seg.height != 0 && seg.width != 0) {
-    ai_msgs::msg::Capture capture;
-    capture.features.swap(seg.data);
-    capture.img.height = seg.valid_h;
-    capture.img.width = seg.valid_w;
-
-    capture.img.step = model_input_width_ / seg.width;
-
-    RCLCPP_INFO(rclcpp::get_logger("SegmentationPostProcess"),
-                "features size: %d, width: %d, height: %d, num_classes: %d, step: %d",
-                capture.features.size(),
-                capture.img.width,
-                capture.img.height,
-                seg.num_classes,
-                capture.img.step);
-
-    ai_msgs::msg::Target target;
-    target.set__type("parking_space");
-    
-    ai_msgs::msg::Attribute attribute;
-    attribute.set__type("segmentation_label_count");
-    attribute.set__value(seg.num_classes);
-    target.attributes.emplace_back(std::move(attribute));
-
-    target.captures.emplace_back(std::move(capture));
-    pub_data->targets.emplace_back(std::move(target));
-  }
-
-  pub_data->header.set__stamp(parser_output->msg_header->stamp);
-  pub_data->header.set__frame_id(parser_output->msg_header->frame_id);
-
-  // 如果开启了渲染，本地渲染并存储图片
+// 如果开启了渲染，本地渲染并存储图片
   if (dump_render_img_ && parser_output->pyramid) {
-    ImageUtils::Render(parser_output->pyramid, pub_data, parser_output->resized_h, parser_output->resized_w);
+    ImageUtils::Render(parser_output->pyramid, pub_data, 
+                      parser_output->resized_h, 
+                      parser_output->resized_w);
   }
 
-  // 使用resize后的分辨率作为感知结果的分辨率
-  perception_info_msg_->height = parser_output->resized_h;
-  perception_info_msg_->width = parser_output->resized_w;
-
+  // Handle coordinate mapping if needed
   if (parser_output->ratio != 1.0) {
     RCLCPP_DEBUG_STREAM(get_logger(),
       "ratio:" << parser_output->ratio
@@ -671,6 +437,7 @@ int DnnExampleNode::PostProcess(
         roi.rect.width *= parser_output->ratio;
         roi.rect.height *= parser_output->ratio;
         
+        // Add bounds checking
         if (parser_output->img_w > 0 && parser_output->img_h > 0) {
           if (roi.rect.x_offset < 0) roi.rect.x_offset = 0;
           if (roi.rect.y_offset < 0) roi.rect.y_offset = 0;
@@ -688,32 +455,31 @@ int DnnExampleNode::PostProcess(
     }
   }
 
-  // 所有数据准备好之后才允许发布
-  is_pub_info_ready_ = true;
+  // Add performance statistics
+    // 所有数据准备好之后才允许发布
+    is_pub_info_ready_ = true;
 
-  for (auto &target : pub_data->targets) {
-    for (auto &roi : target.rois) {
-      RCLCPP_DEBUG(this->get_logger(),
-      "pub rect: %d %d %d %d, det type: %s, score:%f",
-      roi.rect.x_offset, roi.rect.y_offset,
-      roi.rect.x_offset + roi.rect.width, roi.rect.y_offset + roi.rect.height,
-      target.type.c_str(), roi.confidence);
+    for (auto &target : pub_data->targets) {
+      for (auto &roi : target.rois) {
+        RCLCPP_DEBUG(this->get_logger(),
+        "pub rect: %d %d %d %d, det type: %s, score:%f",
+        roi.rect.x_offset, roi.rect.y_offset,
+        roi.rect.x_offset + roi.rect.width, roi.rect.y_offset + roi.rect.height,
+        target.type.c_str(), roi.confidence);
+      }
     }
-  }
-
-  // 填充perf性能统计信息
-  // 前处理统计
-  ai_msgs::msg::Perf perf_preprocess;
-  perf_preprocess.set__type(model_name_ + "_preprocess");
-  perf_preprocess.set__stamp_start(
-      ConvertToRosTime(parser_output->preprocess_timespec_start));
-  perf_preprocess.set__stamp_end(
-      ConvertToRosTime(parser_output->preprocess_timespec_end));
-  perf_preprocess.set__time_ms_duration(CalTimeMsDuration(
-      perf_preprocess.stamp_start, perf_preprocess.stamp_end));
-  pub_data->perfs.emplace_back(perf_preprocess);
-
-  // dnn node有输出统计信息
+  
+    // 填充perf性能统计信息
+    // 前处理统计
+    ai_msgs::msg::Perf perf_preprocess;
+    perf_preprocess.set__type(model_name_ + "_preprocess");
+    perf_preprocess.set__stamp_start(
+        ConvertToRosTime(parser_output->preprocess_timespec_start));
+    perf_preprocess.set__stamp_end(
+        ConvertToRosTime(parser_output->preprocess_timespec_end));
+    perf_preprocess.set__time_ms_duration(CalTimeMsDuration(
+        perf_preprocess.stamp_start, perf_preprocess.stamp_end));
+    pub_data->perfs.emplace_back(perf_preprocess);
   if (node_output->rt_stat) {
     struct timespec time_now = {0, 0};
     clock_gettime(CLOCK_REALTIME, &time_now);
@@ -752,7 +518,6 @@ int DnnExampleNode::PostProcess(
     perf_pipeline.set__time_ms_duration(
         CalTimeMsDuration(perf_pipeline.stamp_start, perf_pipeline.stamp_end));
     pub_data->perfs.push_back(perf_pipeline);
-
     if (parser_output) {
       // Output time delay info
       RCLCPP_DEBUG_STREAM(this->get_logger(),
@@ -770,7 +535,6 @@ int DnnExampleNode::PostProcess(
         << ", parse_timespec_end: " << std::to_string(node_output->rt_stat->parse_timespec_end.tv_sec) << "." << std::to_string(node_output->rt_stat->parse_timespec_end.tv_nsec)
       );
     }
-
     // 推理输出帧率统计
     pub_data->set__fps(round(node_output->rt_stat->output_fps));
 
@@ -788,7 +552,7 @@ int DnnExampleNode::PostProcess(
     }
   }
 
-  // 发布AI消息
+  // Publish results
   msg_publisher_->publish(std::move(pub_data));
   return 0;
 }
