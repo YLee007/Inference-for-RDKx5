@@ -53,7 +53,7 @@ if (${SHARED_MEM})
 endif ()
 
 # x3|rdkultra|x86
-set(PREFIX_PATH x3)
+set(PREFIX_PATH x5)
 set(SYS_ROOT ${CMAKE_SYSROOT})
 
 if(PLATFORM_X3)

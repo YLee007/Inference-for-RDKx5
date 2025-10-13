@@ -51,7 +51,7 @@ public:
     camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
 
 #ifdef SHARED_MEM_ENABLED
-    bool use_shared_mem = this->declare_parameter("use_shared_memory", false);
+    bool use_shared_mem = this->declare_parameter("use_shared_memory", true);
     if (use_shared_mem) {
       sharedmem_pub_ = this->create_publisher<hbm_img_msgs::msg::HbmMsg1080P>(
         "/hbmem_img", 10);
@@ -109,16 +109,43 @@ public:
 #ifdef SHARED_MEM_ENABLED
           if (sharedmem_pub_ && sharedmem_pub_->get_subscription_count() > 0) {
             auto shared_msg = std::make_unique<hbm_img_msgs::msg::HbmMsg1080P>();
-            shared_msg->header = image_msg_.header;
-            shared_msg->height = image_msg_.height;
-            shared_msg->width = image_msg_.width;
-            shared_msg->step = image_msg_.step;
-            shared_msg->data.assign(image_msg_.data.begin(), image_msg_.data.end());
-            shared_msg->encoding.assign("nv12");
+            
+            shared_msg->time_stamp = this->get_clock()->now();
+            
+            // 设置图像基本信息
+            shared_msg->index = 0;  // 可以根据需要设置索引
+            shared_msg->height = out_frame.stFrameInfo.nHeight;
+            shared_msg->width = out_frame.stFrameInfo.nWidth;
+            shared_msg->step = out_frame.stFrameInfo.nWidth * 3;
+            shared_msg->data_size = out_frame.stFrameInfo.nFrameLen;
+            
+            // 设置编码格式
+            std::string encoding_str = "nv12";
+            if (encoding_str.size() < shared_msg->encoding.size()) {
+                std::copy(encoding_str.begin(), encoding_str.end(), shared_msg->encoding.begin());
+                // 剩余部分填充0
+                std::fill(shared_msg->encoding.begin() + encoding_str.size(), 
+                         shared_msg->encoding.end(), 0);
+            } else {
+                // 截断处理
+                std::copy(encoding_str.begin(), 
+                         encoding_str.begin() + shared_msg->encoding.size(), 
+                         shared_msg->encoding.begin());
+            }
+            
+            // 复制图像数据
+            size_t copy_size = std::min(static_cast<size_t>(out_frame.stFrameInfo.nFrameLen), 
+                                       static_cast<size_t>(shared_msg->MAX_SIZE));
+            std::copy_n(static_cast<uint8_t*>(out_frame.pBufAddr), 
+                       copy_size, shared_msg->data.begin());
+            
             sharedmem_pub_->publish(std::move(shared_msg));
-          } else {
+          } 
+          else {
             camera_pub_.publish(image_msg_, camera_info_msg_);
           }
+#else
+          camera_pub_.publish(image_msg_, camera_info_msg_);
 #endif
 
           MV_CC_FreeImageBuffer(camera_handle_, &out_frame);
