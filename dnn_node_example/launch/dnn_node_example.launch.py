@@ -37,7 +37,7 @@ def generate_launch_description():
 
     # args that can be set from the command line or a default will be used
     config_file_launch_arg = DeclareLaunchArgument(
-        "dnn_example_config_file", default_value=TextSubstitution(text="config/fcosworkconfig.json")
+        "dnn_example_config_file", default_value=TextSubstitution(text="..\config\x5\yolov11workconfig.json")
     )
     dump_render_launch_arg = DeclareLaunchArgument(
         "dnn_example_dump_render_img", default_value=TextSubstitution(text="0")
@@ -56,31 +56,27 @@ def generate_launch_description():
     print("camera_type is ", camera_type)
     
     cam_node = None
-    camera_type_mipi = None
+    camera_type_hik = None
     camera_device_arg = None
 
-    if camera_type == "usb":
-        # usb cam图片发布pkg
-        usb_cam_device_arg = DeclareLaunchArgument(
-            'device',
-            default_value='/dev/video8',
-            description='usb camera device')
-
-        usb_node = IncludeLaunchDescription(
+    if camera_type == "hik":
+        # HIK camera
+        cam_node = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(
-                    get_package_share_directory('hobot_usb_cam'),
-                    'launch/hobot_usb_cam.launch.py')),
+                    get_package_share_directory('hik_camera'),
+                    'launch/hik_camera.launch.py')),
             launch_arguments={
-                'usb_image_width': LaunchConfiguration('dnn_example_image_width'),
-                'usb_image_height': LaunchConfiguration('dnn_example_image_height'),
-                'usb_video_device': LaunchConfiguration('device')
+                'use_sensor_data_qos': 'false',
+                'use_shared_memory': 'true'
             }.items()
         )
-        print("using usb cam")
-        cam_node = usb_node
-        camera_type_mipi = False
-        camera_device_arg = usb_cam_device_arg
+        print("using hik camera")
+        camera_type_mipi = True
+        camera_device_arg = DeclareLaunchArgument(
+            'device',
+            default_value='hik',
+            description='hik camera device')
 
     elif camera_type == "fb":
         # 本地图片发布
@@ -108,33 +104,23 @@ def generate_launch_description():
         camera_device_arg = feedback_picture_arg
 
     else:
-        if camera_type == "mipi":
-            print("using mipi cam")
-        else:
-            print("invalid camera_type ", camera_type,
-                ", which is set with export CAM_TYPE=usb/mipi/fb, using default mipi cam")
-        # mipi cam图片发布pkg
-        mipi_cam_device_arg = DeclareLaunchArgument(
-            'device',
-            default_value='F37',
-            description='mipi camera device')
-        mipi_node = IncludeLaunchDescription(
+        print("invalid camera_type ", camera_type,
+              ", which is set with export CAM_TYPE=hik/fb, using default hik camera")
+        cam_node = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(
-                    get_package_share_directory('mipi_cam'),
-                    'launch/mipi_cam.launch.py')),
+                    get_package_share_directory('hik_camera'),
+                    'launch/hik_camera.launch.py')),
             launch_arguments={
-                'mipi_image_width': LaunchConfiguration('dnn_example_image_width'),
-                'mipi_image_height': LaunchConfiguration('dnn_example_image_height'),
-                'mipi_io_method': 'shared_mem',
-                'mipi_frame_ts_type': 'realtime',
-                'mipi_video_device': LaunchConfiguration('device')
+                'use_sensor_data_qos': 'false',
+                'use_shared_memory': 'true'
             }.items()
         )
-
-        cam_node = mipi_node
-        camera_type_mipi = True
-        camera_device_arg = mipi_cam_device_arg
+        camera_type_hik = True
+        camera_device_arg = DeclareLaunchArgument(
+            'device',
+            default_value='hik',
+            description='hik camera device')
 
     # jpeg图片编码&发布pkg
     jpeg_codec_node = IncludeLaunchDescription(
@@ -178,18 +164,16 @@ def generate_launch_description():
     )
 
     # 算法pkg
-    dnn_node_example_node = Node(
-        package='dnn_node_example',
+    dnn_node = Node(
+        package='dnn_inference',  # Changed from dnn_node_example
         executable='example',
         output='screen',
         parameters=[
             {"config_file": LaunchConfiguration('dnn_example_config_file')},
-            {"dump_render_img": LaunchConfiguration(
-                'dnn_example_dump_render_img')},
+            {"dump_render_img": LaunchConfiguration('dnn_example_dump_render_img')},
             {"feed_type": 1},
             {"is_shared_mem_sub": 1},
-            {"msg_pub_topic_name": LaunchConfiguration(
-                "dnn_example_msg_pub_topic_name")}
+            {"msg_pub_topic_name": LaunchConfiguration("dnn_example_msg_pub_topic_name")}
         ],
         arguments=['--ros-args', '--log-level', 'error']
     )
@@ -201,7 +185,7 @@ def generate_launch_description():
                         'launch/hobot_shm.launch.py'))
             )
 
-    if camera_type_mipi:
+    if camera_type_hik:
         return LaunchDescription([
             camera_device_arg,
             config_file_launch_arg,
@@ -216,7 +200,7 @@ def generate_launch_description():
             # 图片编解码&发布pkg
             jpeg_codec_node,
             # 启动example pkg
-            dnn_node_example_node,
+            dnn_node,
             # 启动web展示pkg
             web_node
         ])
@@ -235,7 +219,7 @@ def generate_launch_description():
             # 图片编解码&发布pkg
             nv12_codec_node,
             # 启动example pkg
-            dnn_node_example_node,
+            dnn_node,
             # 启动web展示pkg
             web_node
         ])

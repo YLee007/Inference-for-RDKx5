@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/ylee/autoaim/install/vision_interfaces/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/ylee/autoaim/rm_auto_aim/rm_auto_aim-main/armor_detector/include/**",
+        "/home/ylee/autoaim/rm_auto_aim/rm_auto_aim-main/armor_tracker/include/**",
+        "/home/ylee/autoaim/vision_attacker/include/**",
+        "/home/ylee/autoaim/vision_serial_driver/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ros2",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}

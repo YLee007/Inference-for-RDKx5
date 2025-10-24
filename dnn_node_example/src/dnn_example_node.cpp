@@ -285,11 +285,12 @@ int DnnExampleNode::LoadConfig() {
   }
 
   // Set parser type to YOLOv11
+  std::string str_parser = "yolov11";
   parser = DnnParserType::YOLOV8_PARSER;
   int ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
   if (ret < 0) {
     RCLCPP_ERROR(this->get_logger(),
-                  "Load %s Parser config file fail",
+                  "LoadParser config file fail",
                   str_parser.data());
     return -1;
   }
