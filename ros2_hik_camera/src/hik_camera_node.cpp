@@ -37,14 +37,14 @@ public:
 
     MV_CC_OpenDevice(camera_handle_);
 
-    // Get camera infomation
+    // Get camera info
     MV_CC_GetImageInfo(camera_handle_, &img_info_);
     image_msg_.data.reserve(img_info_.nHeightMax * img_info_.nWidthMax * 3);
 
     // Init convert param
     convert_param_.nWidth = img_info_.nWidthValue;
     convert_param_.nHeight = img_info_.nHeightValue;
-    convert_param_.enDstPixelType = PixelType_Gvsp_RGB8_Packed;
+    convert_param_.enDstPixelType = PixelType_Gvsp_NV12;
 
     bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", true);
     auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
@@ -85,11 +85,12 @@ public:
       RCLCPP_INFO(this->get_logger(), "Publishing image!");
 
       image_msg_.header.frame_id = "camera_optical_frame";
-      image_msg_.encoding = "rgb8";
+      image_msg_.encoding = "nv12";  // 这里改为NV12
 
       while (rclcpp::ok()) {
         nRet = MV_CC_GetImageBuffer(camera_handle_, &out_frame, 1000);
         if (MV_OK == nRet) {
+          // Convert image to NV12
           convert_param_.pDstBuffer = image_msg_.data.data();
           convert_param_.nDstBufferSize = image_msg_.data.size();
           convert_param_.pSrcData = out_frame.pBufAddr;
@@ -101,8 +102,8 @@ public:
           image_msg_.header.stamp = this->now();
           image_msg_.height = out_frame.stFrameInfo.nHeight;
           image_msg_.width = out_frame.stFrameInfo.nWidth;
-          image_msg_.step = out_frame.stFrameInfo.nWidth * 3;
-          image_msg_.data.resize(image_msg_.width * image_msg_.height * 3);
+          image_msg_.step = out_frame.stFrameInfo.nWidth;
+          image_msg_.data.resize(out_frame.stFrameInfo.nHeight * out_frame.stFrameInfo.nWidth * 3 / 2);  // NV12的图像大小
 
           camera_info_msg_.header = image_msg_.header;
 
@@ -116,10 +117,10 @@ public:
             shared_msg->index = 0;  // 可以根据需要设置索引
             shared_msg->height = out_frame.stFrameInfo.nHeight;
             shared_msg->width = out_frame.stFrameInfo.nWidth;
-            shared_msg->step = out_frame.stFrameInfo.nWidth * 3;
+            shared_msg->step = out_frame.stFrameInfo.nWidth;
             shared_msg->data_size = out_frame.stFrameInfo.nFrameLen;
             
-            // 设置编码格式
+            // 设置编码格式为 NV12
             std::string encoding_str = "nv12";
             if (encoding_str.size() < shared_msg->encoding.size()) {
                 std::copy(encoding_str.begin(), encoding_str.end(), shared_msg->encoding.begin());
