@@ -4,3 +4,4 @@
 
     exposure_time: 6000
     gain: 32.0
+    use_shared_memory: true

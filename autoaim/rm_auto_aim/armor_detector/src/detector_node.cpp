@@ -33,7 +33,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
   // Detector
-  detector_ = initDetector();
+  yolo_= initDetector();
 
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
@@ -238,7 +238,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   detector_->detect_color = get_parameter("detect_color").as_int();
   detector_->classifier->threshold = get_parameter("classifier_threshold").as_double();
 
-  auto armors = detector_->detect(img);
+  auto armors = yolo_->detect(img,frame_count_);
 
   auto final_time = this->now();
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;

@@ -12,6 +12,14 @@ add_definitions(-Wall -Werror)
 ## Export compile commands for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+## 添加共享内存选项
+option(SHARED_MEM "using shared mem" ON)
+if(${SHARED_MEM})
+  message("using shared mem")
+  find_package(hbm_img_msgs REQUIRED)
+  add_definitions(-DSHARED_MEM_ENABLED)
+endif()
+
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
@@ -44,6 +52,13 @@ target_link_libraries(${PROJECT_NAME}
   MVRender
   MvUsb3vTL
 )
+
+if(${SHARED_MEM})
+  ament_target_dependencies(
+    ${PROJECT_NAME}
+    hbm_img_msgs
+  )
+endif()
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN hik_camera::HikCameraNode
