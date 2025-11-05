@@ -10,7 +10,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "avgFilter.hpp"
 #include "packet.h"
-#include <concurrentqueue.h>
+#include "concurrentqueue.h"
 #include <atomic>          // 原子操作
 #include <thread>         // 线程支持
 

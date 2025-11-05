@@ -1,4 +1,4 @@
-#include "yolo11.hpp"
+#include "armor_detector/yolo11.hpp"
 
 #include <fmt/chrono.h>
 #include <yaml-cpp/yaml.h>

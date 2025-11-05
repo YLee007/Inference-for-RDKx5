@@ -38,7 +38,8 @@ public:
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
 
-  std::unique_ptr<YOLO11> initDetector();
+  std::unique_ptr<Detector> initDetector();
+  std::unique_ptr<YOLO11> initYOLO11()
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   void createDebugPublishers();
@@ -52,7 +53,10 @@ private:
   void taskCallback(const std_msgs::msg::String::SharedPtr task_msg);
 
   // Armor Detector
-  std::unique_ptr<YOLO11> yolo_;
+  std::unique_ptr<Detector> detector_;
+
+  // Armor YOLO11
+  std::unique_ptr<YOLO11> yolo11_;
 
   // Detected armors publisher
   auto_aim_interfaces::msg::Armors armors_msg_;

@@ -1,7 +1,6 @@
 #include "../include/vision_serial_driver/vision_serial_driver_node.hpp"
 #include <atomic>
 #include <thread>
-#include <concurrentqueue.h>
 
 serial_driver_node::serial_driver_node(std::string device_name, std::string node_name)
     : rclcpp::Node(node_name), 

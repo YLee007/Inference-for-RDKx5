@@ -33,7 +33,10 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
   // Detector
-  yolo_= initDetector();
+  detector_= initDetector();
+
+  // YOLO11
+  yolo11_ = initYOLO11();  
 
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(

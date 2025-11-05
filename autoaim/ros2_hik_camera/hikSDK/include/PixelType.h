@@ -49,6 +49,8 @@ enum MvGvspPixelType
     PixelType_Gvsp_Mono14                   =   (MV_GVSP_PIX_MONO | MV_PIXEL_BIT_COUNT(16) | 0x0025),
     PixelType_Gvsp_Mono16                   =   (MV_GVSP_PIX_MONO | MV_PIXEL_BIT_COUNT(16) | 0x0007),
 
+    PixelType_Gvsp_NV12                    =   (MV_GVSP_PIX_MONO | MV_PIXEL_BIT_COUNT(12) | 0x0040),
+
     // Bayer buffer format defines 
     PixelType_Gvsp_BayerGR8                 =   (MV_GVSP_PIX_MONO | MV_PIXEL_BIT_COUNT(8) | 0x0008),
     PixelType_Gvsp_BayerRG8                 =   (MV_GVSP_PIX_MONO | MV_PIXEL_BIT_COUNT(8) | 0x0009),
