@@ -1,0 +1,164 @@
+[0.031s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces -- -j32 -l32
+[0.128s] [  2%] Built target vision_interfaces__cpp
+[0.156s] [ 12%] Built target vision_interfaces__rosidl_generator_c
+[0.168s] [ 12%] Built target ament_cmake_python_copy_vision_interfaces
+[0.172s] [ 23%] Built target vision_interfaces__rosidl_typesupport_introspection_cpp
+[0.176s] [ 33%] Built target vision_interfaces__rosidl_typesupport_cpp
+[0.179s] [ 43%] Built target vision_interfaces__rosidl_typesupport_fastrtps_cpp
+[0.187s] [ 53%] Built target vision_interfaces__rosidl_typesupport_fastrtps_c
+[0.189s] [ 64%] Built target vision_interfaces__rosidl_typesupport_c
+[0.210s] [ 74%] Built target vision_interfaces__rosidl_typesupport_introspection_c
+[0.250s] [ 74%] Built target vision_interfaces
+[0.283s] [ 76%] Built target vision_interfaces__py
+[0.333s] [ 84%] Built target vision_interfaces__rosidl_generator_py
+[0.374s] [ 89%] Built target vision_interfaces__rosidl_typesupport_fastrtps_c__pyext
+[0.382s] [ 94%] Built target vision_interfaces__rosidl_typesupport_introspection_c__pyext
+[0.383s] [100%] Built target vision_interfaces__rosidl_typesupport_c__pyext
+[0.636s] running egg_info
+[0.652s] writing vision_interfaces.egg-info/PKG-INFO
+[0.652s] writing dependency_links to vision_interfaces.egg-info/dependency_links.txt
+[0.652s] writing top-level names to vision_interfaces.egg-info/top_level.txt
+[0.704s] reading manifest file 'vision_interfaces.egg-info/SOURCES.txt'
+[0.705s] writing manifest file 'vision_interfaces.egg-info/SOURCES.txt'
+[0.771s] [100%] Built target ament_cmake_python_build_vision_interfaces_egg
+[0.786s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces -- -j32 -l32
+[0.791s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces
+[0.801s] -- Install configuration: ""
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/ament_index/resource_index/rosidl_interfaces/vision_interfaces
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/robot.h
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/rosidl_generator_c__visibility_control.h
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.801s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__type_support.h
+[0.802s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__functions.c
+[0.802s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__functions.c
+[0.802s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__functions.h
+[0.802s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__type_support.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__struct.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__functions.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__struct.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/auto_aim.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/library_path.sh
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/library_path.dsv
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_generator_c.so
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__rosidl_typesupport_fastrtps_c.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__rosidl_typesupport_fastrtps_c.h
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_fastrtps_c.so
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.803s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__type_support.c
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__rosidl_typesupport_introspection_c.h
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__rosidl_typesupport_introspection_c.h
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__type_support.c
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_introspection_c.so
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_c.so
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/auto_aim.hpp
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.804s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__traits.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__traits.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__struct.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__struct.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__builder.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__builder.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__type_support.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__type_support.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/robot.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__rosidl_typesupport_fastrtps_cpp.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__rosidl_typesupport_fastrtps_cpp.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/dds_fastrtps
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_fastrtps_cpp.so
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__rosidl_typesupport_introspection_cpp.hpp
+[0.805s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__type_support.cpp
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/auto_aim__rosidl_typesupport_introspection_cpp.hpp
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/include/vision_interfaces/vision_interfaces/msg/detail/robot__type_support.cpp
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_introspection_cpp.so
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_typesupport_cpp.so
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/pythonpath.sh
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/pythonpath.dsv
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces-0.0.0-py3.10.egg-info
+[0.806s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces-0.0.0-py3.10.egg-info/SOURCES.txt
+[0.806s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces-0.0.0-py3.10.egg-info/dependency_links.txt
+[0.806s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces-0.0.0-py3.10.egg-info/top_level.txt
+[0.806s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces-0.0.0-py3.10.egg-info/PKG-INFO
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/_vision_interfaces_s.ep.rosidl_typesupport_introspection_c.c
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/__init__.py
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/_vision_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/_vision_interfaces_s.ep.rosidl_typesupport_c.c
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg/_robot_s.c
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg/__init__.py
+[0.806s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg/_robot.py
+[0.807s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg/_auto_aim.py
+[0.807s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg/_auto_aim_s.c
+[0.807s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/libvision_interfaces__rosidl_generator_py.so
+[0.807s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[0.807s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[0.846s] Listing '/home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces'...
+[0.846s] Listing '/home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/msg'...
+[0.848s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[0.848s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/local/lib/python3.10/dist-packages/vision_interfaces/vision_interfaces_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/lib/libvision_interfaces__rosidl_generator_py.so
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/msg/Robot.idl
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/msg/AutoAim.idl
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/msg/Robot.msg
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/msg/AutoAim.msg
+[0.849s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/ament_index/resource_index/package_run_dependencies/vision_interfaces
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/ament_index/resource_index/parent_prefix_path/vision_interfaces
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/ament_prefix_path.sh
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/ament_prefix_path.dsv
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/path.sh
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/environment/path.dsv
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/local_setup.bash
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/local_setup.sh
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/local_setup.zsh
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/local_setup.dsv
+[0.850s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/package.dsv
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/ament_index/resource_index/packages/vision_interfaces
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_generator_cExport.cmake
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_generator_cExport-noconfig.cmake
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_typesupport_fastrtps_cExport.cmake
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+[0.850s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_introspection_cExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_cExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_cExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_generator_cppExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_typesupport_fastrtps_cppExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_introspection_cppExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_cppExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfaces__rosidl_typesupport_cppExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_generator_pyExport.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/export_vision_interfaces__rosidl_generator_pyExport-noconfig.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/rosidl_cmake-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/ament_cmake_export_libraries-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/ament_cmake_export_targets-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[0.851s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[0.852s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfacesConfig.cmake
+[0.852s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/cmake/vision_interfacesConfig-version.cmake
+[0.852s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/vision_interfaces/share/vision_interfaces/package.xml
+[0.854s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces

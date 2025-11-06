@@ -1,0 +1,40 @@
+[0.007s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera -- -j32 -l32
+[0.045s] [ 50%] Built target hik_camera_node
+[0.047s] [100%] Built target hik_camera
+[0.058s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera' returned '0': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera -- -j32 -l32
+[0.059s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera
+[0.069s] -- Install configuration: ""
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libMvUsb3vTL.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libMediaProcess.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libMVRender.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libMvCameraControl.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libFormatConversion.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/hik_camera/hik_camera_node
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/library_path.sh
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/library_path.dsv
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/lib/libhik_camera.so
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/config
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/config/camera_info.yaml
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/config/camera_params.yaml
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/launch
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/launch/hik_camera.launch.py
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/ament_index/resource_index/package_run_dependencies/hik_camera
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/ament_index/resource_index/parent_prefix_path/hik_camera
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/ament_prefix_path.sh
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/ament_prefix_path.dsv
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/path.sh
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/environment/path.dsv
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/local_setup.bash
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/local_setup.sh
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/local_setup.zsh
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/local_setup.dsv
+[0.070s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/package.dsv
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/ament_index/resource_index/packages/hik_camera
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/ament_index/resource_index/rclcpp_components/hik_camera
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/cmake/ament_cmake_export_dependencies-extras.cmake
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/cmake/ament_cmake_export_libraries-extras.cmake
+[0.070s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/cmake/hik_cameraConfig.cmake
+[0.071s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/cmake/hik_cameraConfig-version.cmake
+[0.071s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hik_camera/share/hik_camera/package.xml
+[0.089s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera' returned '0': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/hik_camera

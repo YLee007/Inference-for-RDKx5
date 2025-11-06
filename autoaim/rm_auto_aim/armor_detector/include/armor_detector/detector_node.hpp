@@ -21,7 +21,7 @@
 #include "number_classifier.hpp"
 #include "pnp_solver.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
-#include "yolo11.hpp"
+#include "yolo.hpp"
 
 namespace rm_auto_aim
 {
@@ -34,6 +34,7 @@ public:
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
   std::unique_ptr<YOLO11> initYOLO11();
+  std::unique_ptr<Detector> initDetector();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   void createDebugPublishers();

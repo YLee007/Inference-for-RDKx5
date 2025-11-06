@@ -1,86 +1,60 @@
-// Copyright (C) 2022 ChenJun
-// Copyright (C) 2024 Zheng Yu
-// Licensed under the MIT License.
-
-#ifndef ARMOR_DETECTOR__DETECTOR_HPP_
-#define ARMOR_DETECTOR__DETECTOR_HPP_
-
-// OpenCV
-#include <opencv2/core.hpp>
-#include <opencv2/core/types.hpp>
-
-// STD
-#include <cmath>
-#include <string>
-#include <vector>
-
-#include "armor.hpp"
-#include "number_classifier.hpp"
-#include "auto_aim_interfaces/msg/debug_armors.hpp"
-#include "auto_aim_interfaces/msg/debug_lights.hpp"
-
-namespace rm_auto_aim
+std::vector<Armor> ArmorDetectorNode::detectArmors(
+  const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
-class Detector
-{
-public:
-  struct LightParams
-  {
-    // width / height
-    double min_ratio;
-    double max_ratio;
-    // vertical angle
-    double max_angle;
-    // area condition
-    double min_fill_ratio;
-  };
+  // Convert ROS img to cv::Mat
+  auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
 
-  struct ArmorParams
-  {
-    double min_light_ratio;
-    // light pairs distance
-    double min_small_center_distance;
-    double max_small_center_distance;
-    double min_large_center_distance;
-    double max_large_center_distance;
-    // horizontal angle
-    double max_angle;
-  };
+  // Update params (this can be kept if you still want to update parameters)
+  detector_->binary_thres = get_parameter("binary_thres").as_int();
+  detector_->detect_color = get_parameter("detect_color").as_int();
+  detector_->classifier->threshold = get_parameter("classifier_threshold").as_double();
 
-  Detector(const int & bin_thres, const int & color, const LightParams & l, const ArmorParams & a);
+  // If you only need debug information, the actual armor detection can be removed:
+  // auto armors = yolo11_->detect(img, frame_count_);
 
-  std::vector<Armor> detect(const cv::Mat & input);
+  // Publish debug info
+  if (debug_) {
+    // Publish binary image for debugging
+    binary_img_pub_.publish(
+      cv_bridge::CvImage(img_msg->header, "mono8", detector_->binary_img).toImageMsg());
 
-  cv::Mat preprocessImage(const cv::Mat & input);
-  std::vector<Light> findLights(const cv::Mat & rbg_img, const cv::Mat & binary_img);
-  std::vector<Armor> matchLights(const std::vector<Light> & lights);
+    // Sort lights and armors data by x coordinate
+    std::sort(
+      detector_->debug_lights.data.begin(), detector_->debug_lights.data.end(),
+      [](const auto & l1, const auto & l2) { return l1.center_x < l2.center_x; });
+    std::sort(
+      detector_->debug_armors.data.begin(), detector_->debug_armors.data.end(),
+      [](const auto & a1, const auto & a2) { return a1.center_x < a2.center_x; });
 
-  // For debug usage
-  cv::Mat getAllNumbersImage();
-  void drawResults(cv::Mat & img);
+    // Publish debug lights and armors data
+    lights_data_pub_->publish(detector_->debug_lights);
+    armors_data_pub_->publish(detector_->debug_armors);
 
-  int binary_thres;
-  int detect_color;
-  LightParams l;
-  ArmorParams a;
+    // If you want to keep number image publishing:
+    // if (!armors.empty()) {
+    //   auto all_num_img = detector_->getAllNumbersImage();
+    //   number_img_pub_.publish(
+    //     *cv_bridge::CvImage(img_msg->header, "mono8", all_num_img).toImageMsg());
+    // }
 
-  std::unique_ptr<NumberClassifier> classifier;
+    // Draw results (for debugging purposes)
+    detector_->drawResults(img);
 
-  // Debug msgs
-  cv::Mat binary_img;
-  auto_aim_interfaces::msg::DebugLights debug_lights;
-  auto_aim_interfaces::msg::DebugArmors debug_armors;
+    // Draw camera center (for visualization)
+    cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
+    
+    // Optionally, draw latency if you need it
+    // std::stringstream latency_ss;
+    // latency_ss << "Latency: " << std::fixed << std::setprecision(2) << latency << "ms";
+    // auto latency_s = latency_ss.str();
+    // cv::putText(img, latency_s, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
 
-private:
-  bool isLight(const Light & possible_light);
-  bool containLight(
-    const Light & light_1, const Light & light_2, const std::vector<Light> & lights);
-  ArmorType isArmor(const Light & light_1, const Light & light_2);
+    // Publish final result image with debug info
+    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
+  }
 
-  std::vector<Light> lights_;
-  std::vector<Armor> armors_;
-};
+  // Return an empty vector or debug armors (depending on your needs)
+  // Since we're removing the actual detection, we can return an empty vector here:
+  return std::vector<Armor>();
+}
 
-}  // namespace rm_auto_aim
-
-#endif  // ARMOR_DETECTOR__DETECTOR_HPP_

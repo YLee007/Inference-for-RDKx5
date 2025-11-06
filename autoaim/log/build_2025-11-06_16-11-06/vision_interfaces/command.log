@@ -1,0 +1,4 @@
+Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces -- -j32 -l32
+Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces -- -j32 -l32
+Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces
+Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces

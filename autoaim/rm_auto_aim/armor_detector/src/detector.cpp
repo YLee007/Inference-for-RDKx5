@@ -20,9 +20,7 @@
 
 namespace rm_auto_aim
 {
-Detector::Detector(
-  const int & bin_thres, const int & color, const LightParams & l, const ArmorParams & a)
-: binary_thres(bin_thres), detect_color(color), l(l), a(a)
+Detector::Detector()
 {
 }
 
