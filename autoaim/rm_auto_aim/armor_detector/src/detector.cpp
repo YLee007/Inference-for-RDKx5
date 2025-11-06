@@ -33,6 +33,7 @@ std::vector<Armor> Detector::detect(const cv::Mat & input)
   armors_ = matchLights(lights_);
 
   if (!armors_.empty()) {
+    // YOLO11 specific functionality to classify detected armors
     classifier->extractNumbers(input, armors_);
     classifier->classify(armors_);
   }
@@ -76,7 +77,6 @@ std::vector<Light> Detector::findLights(const cv::Mat & rgb_img, const cv::Mat &
     cv::fillPoly(mask, {mask_contour}, 255);
     std::vector<cv::Point> points;
     cv::findNonZero(mask, points);
-    // points / rotated rect area
     bool is_fill_rotated_rect =
       points.size() / (r_rect.size.width * r_rect.size.height) > l.min_fill_ratio;
     cv::Vec4f return_param;
@@ -110,7 +110,6 @@ std::vector<Light> Detector::findLights(const cv::Mat & rgb_img, const cv::Mat &
         for (int i = 0; i < roi.rows; i++) {
           for (int j = 0; j < roi.cols; j++) {
             if (cv::pointPolygonTest(contour, cv::Point2f(j + rect.x, i + rect.y), false) >= 0) {
-              // if point is inside contour
               sum_r += roi.at<cv::Vec3b>(i, j)[0];
               sum_b += roi.at<cv::Vec3b>(i, j)[2];
             }
@@ -215,22 +214,12 @@ ArmorType Detector::isArmor(const Light & light_1, const Light & light_2)
 
   bool is_armor = light_ratio_ok && center_distance_ok && angle_ok;
 
-  // Judge armor type
   ArmorType type;
   if (is_armor) {
     type = center_distance > a.min_large_center_distance ? ArmorType::LARGE : ArmorType::SMALL;
   } else {
     type = ArmorType::INVALID;
   }
-
-  // Fill in debug information
-  auto_aim_interfaces::msg::DebugArmor armor_data;
-  armor_data.type = ARMOR_TYPE_STR[static_cast<int>(type)];
-  armor_data.center_x = (light_1.center.x + light_2.center.x) / 2;
-  armor_data.light_ratio = light_length_ratio;
-  armor_data.center_distance = center_distance;
-  armor_data.angle = angle;
-  this->debug_armors.data.emplace_back(armor_data);
 
   return type;
 }
@@ -248,31 +237,7 @@ cv::Mat Detector::getAllNumbersImage()
     cv::Mat all_num_img;
     cv::vconcat(number_imgs, all_num_img);
     return all_num_img;
-  }
-}
-
-void Detector::drawResults(cv::Mat & img)
-{
-  // Draw Lights
-  for (const auto & light : lights_) {
-    cv::circle(img, light.top, 3, cv::Scalar(255, 255, 255), 1);
-    cv::circle(img, light.bottom, 3, cv::Scalar(255, 255, 255), 1);
-    auto line_color = light.color == RED ? cv::Scalar(255, 255, 0) : cv::Scalar(255, 0, 255);
-    cv::line(img, light.top, light.bottom, line_color, 1);
-  }
-
-  // Draw armors
-  for (const auto & armor : armors_) {
-    cv::line(img, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
-    cv::line(img, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
-  }
-
-  // Show numbers and confidence
-  for (const auto & armor : armors_) {
-    cv::putText(
-      img, armor.classfication_result, armor.left_light.top, cv::FONT_HERSHEY_SIMPLEX, 0.8,
-      cv::Scalar(0, 255, 255), 2);
-  }
 }
 
 }  // namespace rm_auto_aim
+}

@@ -169,7 +169,7 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
         text_marker_.id++;
         text_marker_.pose.position = armor_msg.pose.position;
         text_marker_.pose.position.y -= 0.1;
-        text_marker_.text = armor.classfication_result;
+        text_marker_.text = armor.classification_result;
         armors_msg_.armors.emplace_back(armor_msg);
         marker_array_.markers.emplace_back(armor_marker_);
         marker_array_.markers.emplace_back(text_marker_);
@@ -241,7 +241,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   detector_->detect_color = get_parameter("detect_color").as_int();
   detector_->classifier->threshold = get_parameter("classifier_threshold").as_double();
 
-  auto armors = yolo_->detect(img,frame_count_);
+  auto armors = yolo11_->detect(img,frame_count_);
 
   auto final_time = this->now();
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;

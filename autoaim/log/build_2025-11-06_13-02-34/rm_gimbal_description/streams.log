@@ -1,0 +1,22 @@
+[0.026s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description -- -j32 -l32
+[0.100s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description -- -j32 -l32
+[0.113s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description
+[0.135s] -- Install configuration: ""
+[0.135s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/urdf
+[0.135s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/urdf/rm_gimbal.urdf.xacro
+[0.136s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/ament_index/resource_index/package_run_dependencies/rm_gimbal_description
+[0.136s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/ament_index/resource_index/parent_prefix_path/rm_gimbal_description
+[0.136s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/environment/ament_prefix_path.sh
+[0.137s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/environment/ament_prefix_path.dsv
+[0.138s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/environment/path.sh
+[0.140s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/environment/path.dsv
+[0.140s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/local_setup.bash
+[0.141s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/local_setup.sh
+[0.141s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/local_setup.zsh
+[0.141s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/local_setup.dsv
+[0.142s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/package.dsv
+[0.142s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/ament_index/resource_index/packages/rm_gimbal_description
+[0.143s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/cmake/rm_gimbal_descriptionConfig.cmake
+[0.143s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/cmake/rm_gimbal_descriptionConfig-version.cmake
+[0.144s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/rm_gimbal_description/share/rm_gimbal_description/package.xml
+[0.145s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/rm_gimbal_description

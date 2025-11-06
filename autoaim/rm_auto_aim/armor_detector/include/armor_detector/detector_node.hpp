@@ -1,7 +1,3 @@
-// Copyright (C) 2022 ChenJun
-// Copyright (C) 2024 Zheng Yu
-// Licensed under the MIT License.
-
 #ifndef ARMOR_DETECTOR__DETECTOR_NODE_HPP_
 #define ARMOR_DETECTOR__DETECTOR_NODE_HPP_
 
@@ -22,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "armor_detector/number_classifier.hpp"
-#include "armor_detector/pnp_solver.hpp"
+#include "number_classifier.hpp"
+#include "pnp_solver.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
-#include "armor_detector/yolo11.hpp"
+#include "yolo11.hpp"
 
 namespace rm_auto_aim
 {
@@ -37,9 +33,7 @@ public:
 
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
-
-  std::unique_ptr<Detector> initDetector();
-  std::unique_ptr<YOLO11> initYOLO11()
+  std::unique_ptr<YOLO11> initYOLO11();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   void createDebugPublishers();
@@ -47,7 +41,7 @@ private:
 
   void publishMarkers();
 
-  //  task subscriber
+  // Task subscriber
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr task_sub_;
   bool is_aim_task_;
   void taskCallback(const std_msgs::msg::String::SharedPtr task_msg);
@@ -74,7 +68,7 @@ private:
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  // Image subscrpition
+  // Image subscription
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
 
   // Debug information
@@ -91,3 +85,4 @@ private:
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__DETECTOR_NODE_HPP_
+

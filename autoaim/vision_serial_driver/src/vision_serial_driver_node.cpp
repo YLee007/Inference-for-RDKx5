@@ -1,111 +1,104 @@
 #include "../include/vision_serial_driver/vision_serial_driver_node.hpp"
-#include <atomic>
-#include <thread>
 
 serial_driver_node::serial_driver_node(std::string device_name, std::string node_name)
-    : rclcpp::Node(node_name), 
-      vArray{new visionArray}, 
-      rArray{new robotArray},
-      writeQueue_(1024),  // 初始化队列容量为1024
+    : rclcpp::Node(node_name), vArray{new visionArray}, rArray{new robotArray},
       dev_name{new std::string(device_name)},
-      portConfig{new SerialPortConfig(115200, FlowControl::NONE, Parity::NONE, StopBits::ONE)}, 
-      ctx{IoContext(2)}
+      portConfig{new SerialPortConfig(115200, FlowControl::NONE, Parity::NONE, StopBits::ONE)}, ctx{IoContext(2)}
 {
   RCLCPP_INFO(get_logger(), "节点:/%s启动", node_name.c_str());
   muzzleSpeedFilter.Size=10;
-  
-  // 内存清零
+  // 清零
   memset(vArray->array, 0, sizeof(visionArray));
   memset(rArray->array, 0, sizeof(robotArray));
+  // 设置重启计时器1hz.
+  reopenTimer = create_wall_timer(
+      1s, std::bind(&serial_driver_node::serial_reopen_callback, this));
+  // 设置发布计时器500hz.
+  publishTimer = create_wall_timer(
+      2ms, std::bind(&serial_driver_node::robot_callback, this));
 
-  // 启动异步发送线程（关键新增）
-  writeThread_ = std::thread([this]() {
-    constexpr size_t kBatchSize = 32;    // 每批次最大发送量
-    constexpr auto kIdleSleep = 50us;    // 空闲休眠时间
-    
-    while (rclcpp::ok() && !stopWriteThread_.load()) {
-      size_t sent = 0;
-      visionArray data;
-
-      // 批量发送模式
-      while (sent < kBatchSize && writeQueue_.try_dequeue(data)) {
-        try {
-          serial_write(data.array, sizeof(data.array));
-          sent++;
-        } catch (const std::exception& e) {
-          RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000,
-                              "发送失败: %s", e.what());
-        }
-      }
-
-      // 动态休眠控制
-      std::this_thread::sleep_for(sent ? 1us : kIdleSleep);
-    }
-  });
-
-  // 设置线程优先级（Linux系统）
-  #ifdef __linux__
-  struct sched_param param{.sched_priority = 90};
-  if (pthread_setschedparam(writeThread_.native_handle(), SCHED_FIFO, &param)) {
-    RCLCPP_WARN(get_logger(), "需要root权限设置线程优先级");
-  }
-  #endif
-
-  // 原有定时器和话题初始化
-  reopenTimer = create_wall_timer(1s, std::bind(&serial_driver_node::serial_reopen_callback, this));
-  publishTimer = create_wall_timer(2ms, std::bind(&serial_driver_node::robot_callback, this));
+  // TF broadcaster
+  timestamp_offset_ = this->declare_parameter("timestamp_offset", 0.006);
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-  detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
-  publisher = create_publisher<vision_interfaces::msg::Robot>("/serial_driver/robot", rclcpp::SensorDataQoS());
-  autoAimSub = create_subscription<vision_interfaces::msg::AutoAim>(
-      "/serial_driver/aim_target", rclcpp::SensorDataQoS(), 
-      std::bind(&serial_driver_node::auto_aim_callback, this, std::placeholders::_1));
 
-  // 启动串口读取线程
+  // Detect parameter client
+  detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
+
+  // 发布Robot信息.
+  publisher = create_publisher<vision_interfaces::msg::Robot>(
+      "/serial_driver/robot", rclcpp::SensorDataQoS());
+
+  // 订阅AutoAim信息.
+  autoAimSub = create_subscription<vision_interfaces::msg::AutoAim>(
+      "/serial_driver/aim_target", rclcpp::SensorDataQoS(), std::bind(&serial_driver_node::auto_aim_callback, this, std::placeholders::_1));
+
+  // 设置串口读取线程.
   serialReadThread = std::thread(&serial_driver_node::serial_read_thread, this);
   serialReadThread.detach();
 }
 
 serial_driver_node::~serial_driver_node()
 {
-  // 安全停止发送线程
-  stopWriteThread_.store(true);
-  if (writeThread_.joinable()) {
-    writeThread_.join();
-  }
-
-  // 关闭串口
-  if (serialDriver.port()->is_open()) {
+  if (serialDriver.port()->is_open())
+  {
     serialDriver.port()->close();
   }
 }
 
-void serial_driver_node::auto_aim_callback(const vision_interfaces::msg::AutoAim vMsg)
+void serial_driver_node::serial_reopen_callback()
 {
-  if (isOpen) {
-    // 准备数据
-    vArray->msg.head = 0xA5;
-    vArray->msg.fire = vMsg.fire;
-    vArray->msg.aimPitch = vMsg.aim_pitch;
-    vArray->msg.aimYaw = vMsg.aim_yaw;
-    vArray->msg.tracking = vMsg.tracking;
-
-    // 智能入队策略（关键修改）
-    if (writeQueue_.size_approx() > 800) {  // 80%容量时丢弃旧数据
-      visionArray dummy;
-      writeQueue_.try_dequeue(dummy);
-      lostFrames_++;
+  // 串口失效时尝试重启0
+  if (!isOpen)
+  {
+    try
+    {
+      RCLCPP_WARN(get_logger(), "重启串口:%s...", dev_name->c_str());
+      serialDriver.init_port(*dev_name, *portConfig);
+      serialDriver.port()->open();
+      isOpen = serialDriver.port()->is_open();
     }
-
-    if (!writeQueue_.enqueue(*vArray)) {     // 非阻塞入队
-      lostFrames_++;
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-                         "队列溢出! 总丢帧: %lu", lostFrames_.load());
+    catch (const std::system_error &error)
+    {
+      RCLCPP_ERROR(get_logger(), "打开串口:%s失败", dev_name->c_str());
+      isOpen = false;
     }
+    if (isOpen)
+      RCLCPP_INFO(get_logger(), "打开串口:%s成功", dev_name->c_str());
   }
 }
 
-// 其余函数保持原有实现不变...
+void serial_driver_node::serial_read_thread()
+{
+  while (rclcpp::ok())
+  {
+    std::vector<uint8_t> head(2);
+    std::vector<uint8_t> robotData(sizeof(rArray->array) - 2);
+    if (isOpen)
+    {
+      try
+      {
+        serialDriver.port()->receive(head);
+        if (head[0] == 0xA5 && head[1] == 0x00)
+        { // 包头为0xA5
+          serialDriver.port()->receive(robotData);
+          robotData.resize(sizeof(rArray->array));
+          robotData.insert(robotData.begin(), head[1]);
+          robotData.insert(robotData.begin(), head[0]);
+          float lastSpeed = rArray->msg.muzzleSpeed;
+          memcpy(rArray->array, robotData.data(), sizeof(rArray->array));
+          rArray->msg.muzzleSpeed = rArray->msg.muzzleSpeed > 15 ? rArray->msg.muzzleSpeed : 15.0;
+          if(rArray->msg.muzzleSpeed != lastSpeed)muzzleSpeedFilter.update(rArray->msg.muzzleSpeed);
+          // RCLCPP_INFO(get_logger(), "读取串口.");
+        }
+      }
+      catch (const std::exception &error)
+      {
+        RCLCPP_ERROR(get_logger(), "读取串口时发生错误.");
+        isOpen = false;
+      }
+    }
+  }
+}
 
 void serial_driver_node::serial_write(uint8_t *data, size_t len)
 {
@@ -144,7 +137,6 @@ void serial_driver_node::robot_callback()
       auto msg = vision_interfaces::msg::Robot();
       msg.foe_color=rArray->msg.foeColor==1?1:0;
       msg.mode = rArray->msg.mode;
-      msg.foe_color = rArray->msg.foeColor;
       msg.self_yaw = rArray->msg.robotYaw;
       msg.self_pitch = rArray->msg.robotPitch;
       double muzzle_speed = 15.0;
@@ -166,7 +158,7 @@ void serial_driver_node::robot_callback()
           
         auto param = rclcpp::Parameter("detect_color", msg.foe_color);
 
-        if (!detector_param_client_->service_is_ready()) {
+        if (!detector_param_client_->wait_for_service(std::chrono::seconds(5))) {
           RCLCPP_WARN(get_logger(), "Service not ready, skipping parameter set");
           return;
         }

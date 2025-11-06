@@ -1,0 +1,295 @@
+[0.007s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector -DCMAKE_INSTALL_PREFIX=/home/zjy/Inference-for-RDKx5/autoaim/install/armor_detector
+[0.047s] -- The C compiler identification is GNU 11.4.0
+[0.084s] -- The CXX compiler identification is GNU 11.4.0
+[0.090s] -- Detecting C compiler ABI info
+[0.141s] -- Detecting C compiler ABI info - done
+[0.145s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.145s] -- Detecting C compile features
+[0.145s] -- Detecting C compile features - done
+[0.147s] -- Detecting CXX compiler ABI info
+[0.203s] -- Detecting CXX compiler ABI info - done
+[0.210s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.210s] -- Detecting CXX compile features
+[0.210s] -- Detecting CXX compile features - done
+[0.211s] -- Found ament_cmake_auto: 1.3.11 (/opt/ros/humble/share/ament_cmake_auto/cmake)
+[0.705s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.788s] -- Found OpenCV: /usr (found version "4.5.4") 
+[0.870s] -- Found rosidl_generator_c: 3.1.6 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.874s] -- Found rosidl_adapter: 3.1.6 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.878s] -- Found rosidl_generator_cpp: 3.1.6 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.885s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.894s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.919s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.921s] -- Found rmw_fastrtps_cpp: 6.2.7 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.985s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[1.008s] -- Found FastRTPS: /opt/ros/humble/include  
+[1.034s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.038s] -- Looking for pthread.h
+[1.091s] -- Looking for pthread.h - found
+[1.091s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[1.147s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[1.148s] -- Found Threads: TRUE  
+[1.282s] -- Found eigen3_cmake_module: 0.1.1 (/opt/ros/humble/share/eigen3_cmake_module/cmake)
+[1.282s] -- Found Eigen3: TRUE (found version "3.4.0") 
+[1.282s] -- Ensuring Eigen3 include directory is part of orocos-kdl CMake target
+[1.340s] -- Found ament_lint_auto: 0.12.12 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[1.354s] -- Found ament_cmake_gtest: 1.3.11 (/opt/ros/humble/share/ament_cmake_gtest/cmake)
+[1.356s] -- Found gtest sources under '/opt/ros/humble/src/gtest_vendor': C++ tests using 'Google Test' will be built
+[1.368s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[1.368s] -- Configured cppcheck include dirs: /home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include
+[1.368s] -- Configured cppcheck exclude dirs and/or files: 
+[1.370s] -- Added test 'lint_cmake' to check CMake code style
+[1.371s] -- Added test 'xmllint' to check XML markup files
+[1.374s] -- Added test 'clang_format' to check C / C++ code style
+[1.376s] -- Configuring done
+[1.413s] -- Generating done
+[1.421s] -- Build files have been written to: /home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector
+[1.429s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector' returned '0': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector -DCMAKE_INSTALL_PREFIX=/home/zjy/Inference-for-RDKx5/autoaim/install/armor_detector
+[1.431s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector -- -j32 -l32
+[1.470s] [  5%] [32mBuilding CXX object gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o[0m
+[1.471s] [ 11%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/pnp_solver.cpp.o[0m
+[1.471s] [ 17%] [32mBuilding CXX object gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o[0m
+[1.472s] [ 23%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/detector.cpp.o[0m
+[1.472s] [ 29%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/detector_node.cpp.o[0m
+[1.472s] [ 35%] [32mBuilding CXX object CMakeFiles/armor_detector_node.dir/rclcpp_components/node_main_armor_detector_node.cpp.o[0m
+[1.473s] [ 41%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/number_classifier.cpp.o[0m
+[1.473s] [ 47%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/yolo.cpp.o[0m
+[1.473s] [ 52%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/yolo11.cpp.o[0m
+[2.189s] [ 58%] [32m[1mLinking CXX static library libgtest_main.a[0m
+[2.220s] [ 58%] Built target gtest_main
+[2.652s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:5[m[K:
+[2.652s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:35:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[2.653s]    35 |   [01;31m[Kov[m[K::Core core_;
+[2.653s]       |   [01;31m[K^~[m[K
+[2.653s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:36:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[2.653s]    36 |   [01;31m[Kov[m[K::CompiledModel compiled_model_;
+[2.653s]       |   [01;31m[K^~[m[K
+[2.654s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:10:1:[m[K [01;31m[Kerror: [m[K‘[01m[KYOLO[m[K’ does not name a type
+[2.654s]    10 | [01;31m[KYOLO[m[K::YOLO(const std::string & config_path, bool debug)
+[2.654s]       | [01;31m[K^~~~[m[K
+[2.654s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:24:11:[m[K [01;31m[Kerror: [m[K‘[01m[KArmor[m[K’ was not declared in this scope; did you mean ‘[01m[Krm_auto_aim::Armor[m[K’?
+[2.654s]    24 | std::list<[01;31m[KArmor[m[K> YOLO::detect(const cv::Mat & img, int frame_count)
+[2.654s]       |           [01;31m[K^~~~~[m[K
+[2.655s]       |           [32m[Krm_auto_aim::Armor[m[K
+[2.655s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo.hpp:6[m[K,
+[2.655s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:1[m[K:
+[2.655s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K‘[01m[Krm_auto_aim::Armor[m[K’ declared here
+[2.655s]    41 | struct [01;36m[KArmor[m[K
+[2.655s]       |        [01;36m[K^~~~~[m[K
+[2.655s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:24:16:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[2.655s]    24 | std::list<Armor[01;31m[K>[m[K YOLO::detect(const cv::Mat & img, int frame_count)
+[2.655s]       |                [01;31m[K^[m[K
+[2.655s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:24:16:[m[K [01;31m[Kerror: [m[Ktemplate argument 2 is invalid
+[2.655s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:24:18:[m[K [01;31m[Kerror: [m[K‘[01m[KYOLO[m[K’ has not been declared
+[2.655s]    24 | std::list<Armor> [01;31m[KYOLO[m[K::detect(const cv::Mat & img, int frame_count)
+[2.655s]       |                  [01;31m[K^~~~[m[K
+[2.657s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:[m[K In function ‘[01m[Kint auto_aim::detect(const cv::Mat&, int)[m[K’:
+[2.657s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:26:10:[m[K [01;31m[Kerror: [m[K‘[01m[Kyolo_[m[K’ was not declared in this scope
+[2.657s]    26 |   return [01;31m[Kyolo_[m[K->detect(img, frame_count);
+[2.657s]       |          [01;31m[K^~~~~[m[K
+[2.657s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:[m[K At global scope:
+[2.657s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:29:11:[m[K [01;31m[Kerror: [m[K‘[01m[KArmor[m[K’ was not declared in this scope; did you mean ‘[01m[Krm_auto_aim::Armor[m[K’?
+[2.657s]    29 | std::list<[01;31m[KArmor[m[K> YOLO::postprocess(
+[2.657s]       |           [01;31m[K^~~~~[m[K
+[2.657s]       |           [32m[Krm_auto_aim::Armor[m[K
+[2.657s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo.hpp:6[m[K,
+[2.657s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:1[m[K:
+[2.657s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K‘[01m[Krm_auto_aim::Armor[m[K’ declared here
+[2.657s]    41 | struct [01;36m[KArmor[m[K
+[2.658s]       |        [01;36m[K^~~~~[m[K
+[2.658s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:29:16:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[2.658s]    29 | std::list<Armor[01;31m[K>[m[K YOLO::postprocess(
+[2.658s]       |                [01;31m[K^[m[K
+[2.658s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:29:16:[m[K [01;31m[Kerror: [m[Ktemplate argument 2 is invalid
+[2.658s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:29:18:[m[K [01;31m[Kerror: [m[K‘[01m[KYOLO[m[K’ has not been declared
+[2.658s]    29 | std::list<Armor> [01;31m[KYOLO[m[K::postprocess(
+[2.658s]       |                  [01;31m[K^~~~[m[K
+[2.659s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:[m[K In function ‘[01m[Kint auto_aim::postprocess(double, cv::Mat&, const cv::Mat&, int)[m[K’:
+[2.659s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo.cpp:32:10:[m[K [01;31m[Kerror: [m[K‘[01m[Kyolo_[m[K’ was not declared in this scope
+[2.659s]    32 |   return [01;31m[Kyolo_[m[K->postprocess(scale, output, bgr_img, frame_count);
+[2.659s]       |          [01;31m[K^~~~~[m[K
+[2.752s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[2.752s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:35:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[2.752s]    35 |   [01;31m[Kov[m[K::Core core_;
+[2.752s]       |   [01;31m[K^~[m[K
+[2.753s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:36:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[2.753s]    36 |   [01;31m[Kov[m[K::CompiledModel compiled_model_;
+[2.753s]       |   [01;31m[K^~[m[K
+[3.022s] gmake[2]: *** [CMakeFiles/armor_detector.dir/build.make:132：CMakeFiles/armor_detector.dir/src/yolo.cpp.o] 错误 1
+[3.022s] gmake[2]: *** 正在等待未完成的任务....
+[3.089s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In constructor ‘[01m[Krm_auto_aim::YOLO11::YOLO11(const string&, bool)[m[K’:
+[3.090s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:15:15:[m[K [01;31m[Kerror: [m[Kno matching function for call to ‘[01m[Krm_auto_aim::Detector::Detector()[m[K’
+[3.090s]    15 | : debug_(debug[01;31m[K)[m[K
+[3.090s]       |               [01;31m[K^[m[K
+[3.090s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:10[m[K,
+[3.090s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[3.090s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector.hpp:50:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Detector::Detector(const int&, const int&, const rm_auto_aim::Detector::LightParams&, const rm_auto_aim::Detector::ArmorParams&)[m[K’
+[3.090s]    50 |   [01;36m[KDetector[m[K(const int & bin_thres, const int & color, const LightParams & l, const ArmorParams & a);
+[3.090s]       |   [01;36m[K^~~~~~~~[m[K
+[3.090s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector.hpp:50:3:[m[K [01;36m[Knote: [m[K  candidate expects 4 arguments, 0 provided
+[3.090s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector.hpp:24:7:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Detector::Detector(rm_auto_aim::Detector&&)[m[K’
+[3.090s]    24 | class [01;36m[KDetector[m[K
+[3.090s]       |       [01;36m[K^~~~~~~~[m[K
+[3.090s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector.hpp:24:7:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 0 provided
+[3.094s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:37:3:[m[K [01;31m[Kerror: [m[K‘[01m[Knet_[m[K’ was not declared in this scope
+[3.094s]    37 |   [01;31m[Knet_[m[K = cv::dnn::readNet(model_path_);
+[3.094s]       |   [01;31m[K^~~~[m[K
+[3.101s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kvirtual std::__cxx11::list<rm_auto_aim::Armor> rm_auto_aim::YOLO11::detect(const cv::Mat&, int)[m[K’:
+[3.101s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:76:3:[m[K [01;31m[Kerror: [m[K‘[01m[Knet_[m[K’ was not declared in this scope
+[3.101s]    76 |   [01;31m[Knet_[m[K.setInput(blob);
+[3.101s]       |   [01;31m[K^~~~[m[K
+[3.109s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kstd::__cxx11::list<rm_auto_aim::Armor> rm_auto_aim::YOLO11::parse(double, cv::Mat&, const cv::Mat&, int)[m[K’:
+[3.109s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:150:9:[m[K [01;31m[Kerror: [m[K‘[01m[Kstruct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kcenter_norm[m[K’
+[3.109s]   150 |     it->[01;31m[Kcenter_norm[m[K = get_center_norm(bgr_img, it->center);
+[3.109s]       |         [01;31m[K^~~~~~~~~~~[m[K
+[3.235s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kbool rm_auto_aim::YOLO11::check_name(const rm_auto_aim::Armor&) const[m[K’:
+[3.235s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:161:24:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.235s]   161 |   auto name_ok = armor.[01;31m[Kname[m[K != ArmorName::not_armor;
+[3.235s]       |                        [01;31m[K^~~~[m[K
+[3.235s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:161:32:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.235s]   161 |   auto name_ok = armor.name != [01;31m[KArmorName[m[K::not_armor;
+[3.235s]       |                                [01;31m[K^~~~~~~~~[m[K
+[3.235s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kbool rm_auto_aim::YOLO11::check_type(const rm_auto_aim::Armor&) const[m[K’:
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:169:44:[m[K [01;31m[Kerror: [m[K‘[01m[Ksmall[m[K’ is not a member of ‘[01m[Krm_auto_aim::ArmorType[m[K’
+[3.236s]   169 |   auto name_ok = (armor.type == ArmorType::[01;31m[Ksmall[m[K)
+[3.236s]       |                                            [01;31m[K^~~~~[m[K
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:170:29:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.236s]   170 |                    ? (armor.[01;31m[Kname[m[K != ArmorName::one && armor.name != ArmorName::base)
+[3.236s]       |                             [01;31m[K^~~~[m[K
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:170:37:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.236s]   170 |                    ? (armor.name != [01;31m[KArmorName[m[K::one && armor.name != ArmorName::base)
+[3.236s]       |                                     [01;31m[K^~~~~~~~~[m[K
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:170:61:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.236s]   170 |                    ? (armor.name != ArmorName::one && armor.[01;31m[Kname[m[K != ArmorName::base)
+[3.236s]       |                                                             [01;31m[K^~~~[m[K
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:170:69:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.236s]   170 |                    ? (armor.name != ArmorName::one && armor.name != [01;31m[KArmorName[m[K::base)
+[3.236s]       |                                                                     [01;31m[K^~~~~~~~~[m[K
+[3.236s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:171:29:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.236s]   171 |                    : (armor.[01;31m[Kname[m[K != ArmorName::two && armor.name != ArmorName::sentry &&
+[3.236s]       |                             [01;31m[K^~~~[m[K
+[3.237s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:171:37:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.237s]   171 |                    : (armor.name != [01;31m[KArmorName[m[K::two && armor.name != ArmorName::sentry &&
+[3.237s]       |                                     [01;31m[K^~~~~~~~~[m[K
+[3.237s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:171:61:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.237s]   171 |                    : (armor.name != ArmorName::two && armor.[01;31m[Kname[m[K != ArmorName::sentry &&
+[3.237s]       |                                                             [01;31m[K^~~~[m[K
+[3.237s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:171:69:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.237s]   171 |                    : (armor.name != ArmorName::two && armor.name != [01;31m[KArmorName[m[K::sentry &&
+[3.237s]       |                                                                     [01;31m[K^~~~~~~~~[m[K
+[3.237s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:172:29:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.237s]   172 |                       armor.[01;31m[Kname[m[K != ArmorName::outpost);
+[3.237s]       |                             [01;31m[K^~~~[m[K
+[3.237s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:172:37:[m[K [01;31m[Kerror: [m[K‘[01m[KArmorName[m[K’ has not been declared
+[3.237s]   172 |                       armor.name != [01;31m[KArmorName[m[K::outpost);
+[3.237s]       |                                     [01;31m[K^~~~~~~~~[m[K
+[3.241s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kvoid rm_auto_aim::YOLO11::draw_detections(const cv::Mat&, const std::__cxx11::list<rm_auto_aim::Armor>&, int) const[m[K’:
+[3.241s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:219:44:[m[K [01;31m[Kerror: [m[K‘[01m[KCOLORS[m[K’ was not declared in this scope
+[3.242s]   219 |       "{:.2f} {} {} {}", armor.confidence, [01;31m[KCOLORS[m[K[armor.color], ARMOR_NAMES[armor.name],
+[3.242s]       |                                            [01;31m[K^~~~~~[m[K
+[3.242s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:219:57:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kcolor[m[K’
+[3.242s]   219 |       "{:.2f} {} {} {}", armor.confidence, COLORS[armor.[01;31m[Kcolor[m[K], ARMOR_NAMES[armor.name],
+[3.242s]       |                                                         [01;31m[K^~~~~[m[K
+[3.247s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:219:65:[m[K [01;31m[Kerror: [m[K‘[01m[KARMOR_NAMES[m[K’ was not declared in this scope
+[3.247s]   219 |       "{:.2f} {} {} {}", armor.confidence, COLORS[armor.color], [01;31m[KARMOR_NAMES[m[K[armor.name],
+[3.247s]       |                                                                 [01;31m[K^~~~~~~~~~~[m[K
+[3.247s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:219:83:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.247s]   219 |       "{:.2f} {} {} {}", armor.confidence, COLORS[armor.color], ARMOR_NAMES[armor.[01;31m[Kname[m[K],
+[3.247s]       |                                                                                   [01;31m[K^~~~[m[K
+[3.252s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:220:7:[m[K [01;31m[Kerror: [m[K‘[01m[KARMOR_TYPES[m[K’ was not declared in this scope; did you mean ‘[01m[KARMOR_TYPE_STR[m[K’?
+[3.252s]   220 |       [01;31m[KARMOR_TYPES[m[K[armor.type]);
+[3.252s]       |       [01;31m[K^~~~~~~~~~~[m[K
+[3.252s]       |       [32m[KARMOR_TYPE_STR[m[K
+[3.252s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:221:41:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kpoints[m[K’
+[3.252s]   221 |     tools::draw_points(detection, armor.[01;31m[Kpoints[m[K, {0, 255, 0});
+[3.252s]       |                                         [01;31m[K^~~~~~[m[K
+[3.253s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:[m[K In member function ‘[01m[Kvoid rm_auto_aim::YOLO11::save(const rm_auto_aim::Armor&) const[m[K’:
+[3.253s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:236:65:[m[K [01;31m[Kerror: [m[K‘[01m[Kconst struct rm_auto_aim::Armor[m[K’ has no member named ‘[01m[Kname[m[K’
+[3.253s]   236 |   auto img_path = fmt::format("{}/{}_{}.jpg", save_path_, armor.[01;31m[Kname[m[K, file_name);
+[3.253s]       |                                                                 [01;31m[K^~~~[m[K
+[3.898s] [ 64%] [32m[1mLinking CXX static library libgtest.a[0m
+[3.953s] [ 64%] Built target gtest
+[4.041s] [ 70%] [32m[1mLinking CXX executable armor_detector_node[0m
+[4.136s] [ 70%] Built target armor_detector_node
+[4.380s] In file included from [01m[K/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:33[m[K,
+[4.380s]                  from [01m[K/usr/include/c++/11/bits/allocator.h:46[m[K,
+[4.380s]                  from [01m[K/usr/include/c++/11/list:61[m[K,
+[4.380s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:4[m[K,
+[4.380s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[4.380s] /usr/include/c++/11/ext/new_allocator.h: In instantiation of ‘[01m[Kvoid __gnu_cxx::new_allocator<_Tp>::construct(_Up*, _Args&& ...) [with _Up = rm_auto_aim::Armor; _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&, cv::Point_<float>&}; _Tp = std::_List_node<rm_auto_aim::Armor>][m[K’:
+[4.380s] [01m[K/usr/include/c++/11/bits/alloc_traits.h:516:17:[m[K   required from ‘[01m[Kstatic void std::allocator_traits<std::allocator<_Tp1> >::construct(std::allocator_traits<std::allocator<_Tp1> >::allocator_type&, _Up*, _Args&& ...) [with _Up = rm_auto_aim::Armor; _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&, cv::Point_<float>&}; _Tp = std::_List_node<rm_auto_aim::Armor>; std::allocator_traits<std::allocator<_Tp1> >::allocator_type = std::allocator<std::_List_node<rm_auto_aim::Armor> >][m[K’
+[4.381s] [01m[K/usr/include/c++/11/bits/stl_list.h:638:33:[m[K   required from ‘[01m[Kstd::__cxx11::list<_Tp, _Alloc>::_Node* std::__cxx11::list<_Tp, _Alloc>::_M_create_node(_Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&, cv::Point_<float>&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::_Node = std::__cxx11::list<rm_auto_aim::Armor>::_Node][m[K’
+[4.381s] [01m[K/usr/include/c++/11/bits/stl_list.h:1912:32:[m[K   required from ‘[01m[Kvoid std::__cxx11::list<_Tp, _Alloc>::_M_insert(std::__cxx11::list<_Tp, _Alloc>::iterator, _Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&, cv::Point_<float>&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::iterator = std::__cxx11::list<rm_auto_aim::Armor>::iterator][m[K’
+[4.381s] [01m[K/usr/include/c++/11/bits/stl_list.h:1228:19:[m[K   required from ‘[01m[Kstd::__cxx11::list<_Tp, _Alloc>::reference std::__cxx11::list<_Tp, _Alloc>::emplace_back(_Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&, cv::Point_<float>&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::reference = rm_auto_aim::Armor&][m[K’
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:133:26:[m[K   required from here
+[4.381s] [01m[K/usr/include/c++/11/ext/new_allocator.h:162:11:[m[K [01;31m[Kerror: [m[Kno matching function for call to ‘[01m[Krm_auto_aim::Armor::Armor(int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float> >&, cv::Point_<float>&)[m[K’
+[4.381s]   162 |         { [01;31m[K::new((void *)__p) _Up(std::forward<_Args>(__args)...)[m[K; }
+[4.381s]       |           [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[4.381s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:9[m[K,
+[4.381s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:44:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(const rm_auto_aim::Light&, const rm_auto_aim::Light&)[m[K’
+[4.381s]    44 |   [01;36m[KArmor[m[K(const Light & l1, const Light & l2)
+[4.381s]       |   [01;36m[K^~~~~[m[K
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:44:3:[m[K [01;36m[Knote: [m[K  candidate expects 2 arguments, 5 provided
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:43:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor()[m[K’
+[4.381s]    43 |   [01;36m[KArmor[m[K() = default;
+[4.381s]       |   [01;36m[K^~~~~[m[K
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:43:3:[m[K [01;36m[Knote: [m[K  candidate expects 0 arguments, 5 provided
+[4.381s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(const rm_auto_aim::Armor&)[m[K’
+[4.382s]    41 | struct [01;36m[KArmor[m[K
+[4.382s]       |        [01;36m[K^~~~~[m[K
+[4.382s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 5 provided
+[4.382s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(rm_auto_aim::Armor&&)[m[K’
+[4.382s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 5 provided
+[4.382s] In file included from [01m[K/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:33[m[K,
+[4.382s]                  from [01m[K/usr/include/c++/11/bits/allocator.h:46[m[K,
+[4.382s]                  from [01m[K/usr/include/c++/11/list:61[m[K,
+[4.382s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:4[m[K,
+[4.382s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[4.382s] /usr/include/c++/11/ext/new_allocator.h: In instantiation of ‘[01m[Kvoid __gnu_cxx::new_allocator<_Tp>::construct(_Up*, _Args&& ...) [with _Up = rm_auto_aim::Armor; _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&}; _Tp = std::_List_node<rm_auto_aim::Armor>][m[K’:
+[4.382s] [01m[K/usr/include/c++/11/bits/alloc_traits.h:516:17:[m[K   required from ‘[01m[Kstatic void std::allocator_traits<std::allocator<_Tp1> >::construct(std::allocator_traits<std::allocator<_Tp1> >::allocator_type&, _Up*, _Args&& ...) [with _Up = rm_auto_aim::Armor; _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&}; _Tp = std::_List_node<rm_auto_aim::Armor>; std::allocator_traits<std::allocator<_Tp1> >::allocator_type = std::allocator<std::_List_node<rm_auto_aim::Armor> >][m[K’
+[4.382s] [01m[K/usr/include/c++/11/bits/stl_list.h:638:33:[m[K   required from ‘[01m[Kstd::__cxx11::list<_Tp, _Alloc>::_Node* std::__cxx11::list<_Tp, _Alloc>::_M_create_node(_Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::_Node = std::__cxx11::list<rm_auto_aim::Armor>::_Node][m[K’
+[4.382s] [01m[K/usr/include/c++/11/bits/stl_list.h:1912:32:[m[K   required from ‘[01m[Kvoid std::__cxx11::list<_Tp, _Alloc>::_M_insert(std::__cxx11::list<_Tp, _Alloc>::iterator, _Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::iterator = std::__cxx11::list<rm_auto_aim::Armor>::iterator][m[K’
+[4.382s] [01m[K/usr/include/c++/11/bits/stl_list.h:1228:19:[m[K   required from ‘[01m[Kstd::__cxx11::list<_Tp, _Alloc>::reference std::__cxx11::list<_Tp, _Alloc>::emplace_back(_Args&& ...) [with _Args = {int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float>, std::allocator<cv::Point_<float> > >&}; _Tp = rm_auto_aim::Armor; _Alloc = std::allocator<rm_auto_aim::Armor>; std::__cxx11::list<_Tp, _Alloc>::reference = rm_auto_aim::Armor&][m[K’
+[4.382s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:135:26:[m[K   required from here
+[4.382s] [01m[K/usr/include/c++/11/ext/new_allocator.h:162:11:[m[K [01;31m[Kerror: [m[Kno matching function for call to ‘[01m[Krm_auto_aim::Armor::Armor(int&, float&, cv::Rect_<int>&, std::vector<cv::Point_<float> >&)[m[K’
+[4.383s]   162 |         { [01;31m[K::new((void *)__p) _Up(std::forward<_Args>(__args)...)[m[K; }
+[4.383s]       |           [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[4.383s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:9[m[K,
+[4.383s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/yolo11.cpp:1[m[K:
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:44:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(const rm_auto_aim::Light&, const rm_auto_aim::Light&)[m[K’
+[4.383s]    44 |   [01;36m[KArmor[m[K(const Light & l1, const Light & l2)
+[4.383s]       |   [01;36m[K^~~~~[m[K
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:44:3:[m[K [01;36m[Knote: [m[K  candidate expects 2 arguments, 4 provided
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:43:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor()[m[K’
+[4.383s]    43 |   [01;36m[KArmor[m[K() = default;
+[4.383s]       |   [01;36m[K^~~~~[m[K
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:43:3:[m[K [01;36m[Knote: [m[K  candidate expects 0 arguments, 4 provided
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(const rm_auto_aim::Armor&)[m[K’
+[4.383s]    41 | struct [01;36m[KArmor[m[K
+[4.383s]       |        [01;36m[K^~~~~[m[K
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 4 provided
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Krm_auto_aim::Armor::Armor(rm_auto_aim::Armor&&)[m[K’
+[4.383s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/armor.hpp:41:8:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 4 provided
+[4.726s] gmake[2]: *** [CMakeFiles/armor_detector.dir/build.make:146：CMakeFiles/armor_detector.dir/src/yolo11.cpp.o] 错误 1
+[4.849s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector_node.hpp:28[m[K,
+[4.850s]                  from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/detector_node.cpp:26[m[K:
+[4.850s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:35:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[4.850s]    35 |   [01;31m[Kov[m[K::Core core_;
+[4.850s]       |   [01;31m[K^~[m[K
+[4.850s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/yolo11.hpp:36:3:[m[K [01;31m[Kerror: [m[K‘[01m[Kov[m[K’ does not name a type
+[4.850s]    36 |   [01;31m[Kov[m[K::CompiledModel compiled_model_;
+[4.851s]       |   [01;31m[K^~[m[K
+[4.851s] In file included from [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/detector_node.cpp:26[m[K:
+[4.851s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/include/armor_detector/detector_node.hpp:42:38:[m[K [01;31m[Kerror: [m[Kexpected ‘[01m[K;[m[K’ at end of member declaration
+[4.851s]    42 |   std::unique_ptr<YOLO11> initYOLO11([01;31m[K)[m[K
+[4.851s]       |                                      [01;31m[K^[m[K
+[4.851s]       |                                       [32m[K;[m[K
+[5.016s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/detector_node.cpp:[m[K In member function ‘[01m[Kstd::vector<rm_auto_aim::Armor> rm_auto_aim::ArmorDetectorNode::detectArmors(const ConstSharedPtr&)[m[K’:
+[5.016s] [01m[K/home/zjy/Inference-for-RDKx5/autoaim/rm_auto_aim/armor_detector/src/detector_node.cpp:244:37:[m[K [01;31m[Kerror: [m[K‘[01m[Kframe_count_[m[K’ was not declared in this scope
+[5.016s]   244 |   auto armors = yolo11_->detect(img,[01;31m[Kframe_count_[m[K);
+[5.016s]       |                                     [01;31m[K^~~~~~~~~~~~[m[K
+[8.465s] gmake[2]: *** [CMakeFiles/armor_detector.dir/build.make:90：CMakeFiles/armor_detector.dir/src/detector_node.cpp.o] 错误 1
+[8.465s] gmake[1]: *** [CMakeFiles/Makefile2:161：CMakeFiles/armor_detector.dir/all] 错误 2
+[8.465s] gmake: *** [Makefile:146：all] 错误 2
+[8.467s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector' returned '2': AMENT_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces:/opt/ros/humble LD_LIBRARY_PATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/opt/MVS/lib/64:/opt/MVS/lib/32:/opt/MVS/lib/64:/opt/MVS/lib/32 PYTHONPATH=/home/zjy/Inference-for-RDKx5/autoaim/install/auto_aim_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/armor_detector -- -j32 -l32

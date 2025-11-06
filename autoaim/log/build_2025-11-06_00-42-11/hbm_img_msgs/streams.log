@@ -1,0 +1,144 @@
+[0.009s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs -- -j32 -l32
+[0.048s] [  3%] Built target hbm_img_msgs__cpp
+[0.050s] [ 12%] Built target hbm_img_msgs__rosidl_generator_c
+[0.058s] [ 12%] Built target ament_cmake_python_copy_hbm_img_msgs
+[0.062s] [ 22%] Built target hbm_img_msgs__rosidl_typesupport_cpp
+[0.066s] [ 35%] Built target hbm_img_msgs__rosidl_typesupport_fastrtps_c
+[0.066s] [ 41%] Built target hbm_img_msgs__rosidl_typesupport_fastrtps_cpp
+[0.069s] [ 51%] Built target hbm_img_msgs__rosidl_typesupport_c
+[0.070s] [ 61%] Built target hbm_img_msgs__rosidl_typesupport_introspection_cpp
+[0.070s] [ 70%] Built target hbm_img_msgs__rosidl_typesupport_introspection_c
+[0.081s] [ 70%] Built target hbm_img_msgs
+[0.096s] [ 74%] Built target hbm_img_msgs__py
+[0.113s] [ 80%] Built target hbm_img_msgs__rosidl_generator_py
+[0.128s] [ 87%] Built target hbm_img_msgs__rosidl_typesupport_introspection_c__pyext
+[0.129s] [ 93%] Built target hbm_img_msgs__rosidl_typesupport_fastrtps_c__pyext
+[0.131s] [100%] Built target hbm_img_msgs__rosidl_typesupport_c__pyext
+[0.257s] running egg_info
+[0.265s] writing hbm_img_msgs.egg-info/PKG-INFO
+[0.265s] writing dependency_links to hbm_img_msgs.egg-info/dependency_links.txt
+[0.265s] writing top-level names to hbm_img_msgs.egg-info/top_level.txt
+[0.290s] reading manifest file 'hbm_img_msgs.egg-info/SOURCES.txt'
+[0.291s] writing manifest file 'hbm_img_msgs.egg-info/SOURCES.txt'
+[0.314s] [100%] Built target ament_cmake_python_build_hbm_img_msgs_egg
+[0.330s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs -- -j32 -l32
+[0.331s] Invoking command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs
+[0.333s] -- Install configuration: ""
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/ament_index/resource_index/rosidl_interfaces/hbm_img_msgs
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/rosidl_generator_c__visibility_control.h
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/hbm_msg1080_p.h
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__functions.c
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__struct.h
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__type_support.h
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__functions.h
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/library_path.sh
+[0.333s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/library_path.dsv
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_generator_c.so
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__rosidl_typesupport_fastrtps_c.h
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_fastrtps_c.so
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/hbm_msg1080_p.hpp
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__struct.hpp
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__builder.hpp
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__traits.hpp
+[0.334s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__type_support.hpp
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__rosidl_typesupport_fastrtps_cpp.hpp
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/dds_fastrtps
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_fastrtps_cpp.so
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__type_support.c
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__rosidl_typesupport_introspection_c.h
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_introspection_c.so
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_c.so
+[0.335s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__rosidl_typesupport_introspection_cpp.hpp
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/include/hbm_img_msgs/hbm_img_msgs/msg/detail/hbm_msg1080_p__type_support.cpp
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_introspection_cpp.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_typesupport_cpp.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/pythonpath.sh
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/pythonpath.dsv
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs-2.0.0-py3.10.egg-info
+[0.336s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs-2.0.0-py3.10.egg-info/SOURCES.txt
+[0.336s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs-2.0.0-py3.10.egg-info/dependency_links.txt
+[0.336s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs-2.0.0-py3.10.egg-info/top_level.txt
+[0.336s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs-2.0.0-py3.10.egg-info/PKG-INFO
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/_hbm_img_msgs_s.ep.rosidl_typesupport_c.c
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/__init__.py
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/libhbm_img_msgs__rosidl_generator_py.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/_hbm_img_msgs_s.ep.rosidl_typesupport_introspection_c.c
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/msg
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/msg/_hbm_msg1080_p_s.c
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/msg/__init__.py
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/msg/_hbm_msg1080_p.py
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[0.336s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/_hbm_img_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+[0.355s] Listing '/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs'...
+[0.355s] Listing '/home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/msg'...
+[0.357s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[0.357s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/local/lib/python3.10/dist-packages/hbm_img_msgs/hbm_img_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/lib/libhbm_img_msgs__rosidl_generator_py.so
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/msg/HbmMsg1080P.idl
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/msg/HbmMsg1080P.msg
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/ament_index/resource_index/package_run_dependencies/hbm_img_msgs
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/ament_index/resource_index/parent_prefix_path/hbm_img_msgs
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/ament_prefix_path.sh
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/ament_prefix_path.dsv
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/path.sh
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/environment/path.dsv
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/local_setup.bash
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/local_setup.sh
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/local_setup.zsh
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/local_setup.dsv
+[0.358s] -- Installing: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/package.dsv
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/ament_index/resource_index/packages/hbm_img_msgs
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_generator_cExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_generator_cExport-noconfig.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_generator_cppExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_introspection_cExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_cExport.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_cExport-noconfig.cmake
+[0.358s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_introspection_cppExport.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_cppExport.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_generator_pyExport.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/export_hbm_img_msgs__rosidl_generator_pyExport-noconfig.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/rosidl_cmake-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/ament_cmake_export_targets-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgsConfig.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/cmake/hbm_img_msgsConfig-version.cmake
+[0.359s] -- Up-to-date: /home/zjy/Inference-for-RDKx5/autoaim/install/hbm_img_msgs/share/hbm_img_msgs/package.xml
+[0.363s] Invoked command in '/home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs

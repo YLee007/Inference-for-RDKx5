@@ -28,9 +28,9 @@ public:
   : interface_(interface),
     socket_fd_(-1),
     epoll_fd_(-1),
-    rx_handler_(rx_handler),
-    quit_(false),
-    ok_(false)
+    quit_(false),         // 先初始化 quit_
+    ok_(false),           // 然后初始化 ok_
+    rx_handler_(rx_handler) // 最后初始化 rx_handler_
   {
     try_open();
 

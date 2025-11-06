@@ -1,0 +1,10 @@
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/uninstall.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/vision_attacker_uninstall.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/vision_attacker_node.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/test.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/edit_cache.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/rebuild_cache.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/list_install_components.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/install.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/install/local.dir
+/home/zjy/Inference-for-RDKx5/autoaim/build/vision_attacker/CMakeFiles/install/strip.dir

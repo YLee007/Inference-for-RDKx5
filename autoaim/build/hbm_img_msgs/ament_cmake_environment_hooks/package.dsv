@@ -1,0 +1,4 @@
+source;share/hbm_img_msgs/local_setup.bash
+source;share/hbm_img_msgs/local_setup.dsv
+source;share/hbm_img_msgs/local_setup.sh
+source;share/hbm_img_msgs/local_setup.zsh

@@ -1,0 +1,50 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from hbm_img_msgs/msg/HbmMsg1080P.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+
+module hbm_img_msgs {
+  module msg {
+    typedef uint8 uint8__12[12];
+    typedef uint8 uint8__6220800[6220800];
+    module HbmMsg1080P_Constants {
+      const uint32 MAX_SIZE = 6220800;
+    };
+    @verbatim (language="comment", text=
+      "Copyright (c) 2024，D-Robotics." "\n"
+      "" "\n"
+      "Licensed under the Apache License, Version 2.0 (the \"License\");" "\n"
+      "you may not use this file except in compliance with the License." "\n"
+      "You may obtain a copy of the License at" "\n"
+      "" "\n"
+      "    http://www.apache.org/licenses/LICENSE-2.0" "\n"
+      "" "\n"
+      "Unless required by applicable law or agreed to in writing, software" "\n"
+      "distributed under the License is distributed on an \"AS IS\" BASIS," "\n"
+      "WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied." "\n"
+      "See the License for the specific language governing permissions and" "\n"
+      "limitations under the License.")
+    struct HbmMsg1080P {
+      int32 index;
+
+      builtin_interfaces::msg::Time time_stamp;
+
+      uint32 height;
+
+      uint32 width;
+
+      uint32 data_size;
+
+      uint32 step;
+
+      @verbatim (language="comment", text=
+        "这个字段用于标识图像格式")
+      uint8__12 encoding;
+
+      @verbatim (language="comment", text=
+        "存储图像数据，大小为6220800字节，适用于1080P图像的NV12格式数据")
+      uint8__6220800 data;
+    };
+  };
+};

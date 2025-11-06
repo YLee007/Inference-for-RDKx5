@@ -77,7 +77,10 @@
         "shared_mutex": "cpp",
         "cfenv": "cpp",
         "valarray": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "filesystem": "cpp",
+        "queue": "cpp",
+        "climits": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

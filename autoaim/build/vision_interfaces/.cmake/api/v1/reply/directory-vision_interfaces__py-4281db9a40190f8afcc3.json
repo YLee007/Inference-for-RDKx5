@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "vision_interfaces__py",
+		"source" : "/home/zjy/Inference-for-RDKx5/autoaim/build/vision_interfaces/vision_interfaces__py"
+	}
+}

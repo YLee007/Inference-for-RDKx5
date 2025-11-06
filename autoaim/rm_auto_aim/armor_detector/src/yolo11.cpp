@@ -9,7 +9,7 @@
 #include "tools/img_tools.hpp"
 #include "tools/logger.hpp"
 
-namespace auto_aim
+namespace rm_auto_aim
 {
 YOLO11::YOLO11(const std::string & config_path, bool debug)
 : debug_(debug)
@@ -166,7 +166,7 @@ bool YOLO11::check_name(const Armor & armor) const
 
 bool YOLO11::check_type(const Armor & armor) const
 {
-  auto name_ok = (armor.type == ArmorType::small)
+  auto name_ok = (armor.type == ArmorType::SMALL)
                    ? (armor.name != ArmorName::one && armor.name != ArmorName::base)
                    : (armor.name != ArmorName::two && armor.name != ArmorName::sentry &&
                       armor.name != ArmorName::outpost);
@@ -217,7 +217,7 @@ void YOLO11::draw_detections(
   for (const auto & armor : armors) {
     auto info = fmt::format(
       "{:.2f} {} {} {}", armor.confidence, COLORS[armor.color], ARMOR_NAMES[armor.name],
-      ARMOR_TYPES[armor.type]);
+      ARMOR_TYPE_STR[armor.type]);
     tools::draw_points(detection, armor.points, {0, 255, 0});
     tools::draw_text(detection, info, armor.center, {0, 255, 0});
   }

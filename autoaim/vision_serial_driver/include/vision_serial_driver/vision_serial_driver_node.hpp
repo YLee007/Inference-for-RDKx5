@@ -10,11 +10,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "avgFilter.hpp"
 #include "packet.h"
-#include "concurrentqueue.h"
-#include <atomic>          // 原子操作
-#include <thread>         // 线程支持
 
-using namespace std::chrono_literals;
 using namespace drivers::serial_driver;
 using namespace std::chrono_literals;
 
@@ -32,12 +28,6 @@ public:
     ~serial_driver_node();
 
 private:
-
-    moodycamel::ConcurrentQueue<visionArray> write_queue_;  // 线程安全队列[1,2](@ref)
-    std::atomic_bool stop_write_thread_{false};            // 线程控制标志
-    std::thread write_thread_;                             // 独立发送线程
-    std::atomic_uint32_t lost_frames_{0};                  // 丢帧计数器[3](@ref)
-
     /*@brief 串口重启回调函数*/
     void serial_reopen_callback();
 
@@ -45,12 +35,13 @@ private:
     void serial_read_thread();
 
     /*@brief 串口写入函数*/
-    // void serial_write(uint8_t *data, size_t len);
+    void serial_write(uint8_t *data, size_t len);
 
     /*
     @brief 自瞄回调函数
     @param vMsg 自瞄信息
     */
+
     void auto_aim_callback(const vision_interfaces::msg::AutoAim vMsg);
 
     /*@brief 机器人状态回调函数*/

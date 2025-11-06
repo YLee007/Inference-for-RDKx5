@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "hbm_img_msgs__py",
+		"source" : "/home/zjy/Inference-for-RDKx5/autoaim/build/hbm_img_msgs/hbm_img_msgs__py"
+	}
+}

@@ -6,10 +6,8 @@
 #define ARMOR_DETECTOR__ARMOR_HPP_
 
 #include <opencv2/core.hpp>
-
-// STL
-#include <algorithm>
 #include <string>
+#include <vector>
 
 namespace rm_auto_aim
 {
@@ -18,6 +16,16 @@ const int BLUE = 1;
 
 enum class ArmorType { SMALL, LARGE, INVALID };
 const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
+
+enum class ArmorName {
+    not_armor,
+    one,
+    base,
+    two,
+    sentry,
+    outpost
+    // 其他盔甲名称...
+};
 
 struct Light : public cv::Rect
 {
@@ -54,15 +62,30 @@ struct Armor
   // Light pairs part
   Light left_light, right_light;
   cv::Point2f center;
+  
+  // Additional member for normalized center (relative to image size)
+  cv::Point2f center_norm;  // 归一化后的中心坐标 (相对于图像大小)
+
   ArmorType type;
 
   // Number part
   cv::Mat number_img;
   std::string number;
   float confidence;
-  std::string classfication_result;
+  std::string classification_result;
+
+  // Additional fields for armor name and color
+  ArmorName name = ArmorName::not_armor;  // 默认是 no_armor
+  int color = RED;  // 默认红色
+
+  // Additional members for storing the points of the armor (e.g., the corners)
+  std::vector<cv::Point2f> points;  // 盔甲的关键点（例如四个角点）
+
+  // Debugging information (if needed)
+  std::string debug_info;  // 可选：用于存储调试信息
 };
 
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__ARMOR_HPP_
+

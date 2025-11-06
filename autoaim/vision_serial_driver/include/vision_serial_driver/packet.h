@@ -36,6 +36,9 @@ struct inf_visionMsg
     uint8_t tracking; // 跟踪标志
     float aimYaw;     // 目标Yaw
     float aimPitch;   // 目标Pitch
+    float vx;
+    float vy;
+    float wz;
 };
 
 struct inf_robotMsg
@@ -48,23 +51,25 @@ struct inf_robotMsg
     float muzzleSpeed; // 弹速
 };
 
-struct hero_visionMsg
-{
-    uint16_t head;
-    uint8_t fire;     // 开火标志
-    uint8_t tracking; // 跟踪标志
-    float aimYaw;     // 目标Yaw
-    float aimPitch;   // 目标Pitch
-};
+// struct hero_visionMsg
+// {
+//     uint16_t head;
+//     uint8_t fire;     // 开火标志
+//     uint8_t tracking; // 跟踪标志
+//     float aimYaw;     // 目标Yaw
+//     float aimPitch;   // 目标Pitch
 
-struct hero_robotMsg
-{
-    uint16_t head;
-    uint8_t foeColor;  // 敌方颜色 0-blue 1-red
-    float robotYaw;    // 自身Yaw
-    float robotPitch;  // 自身Pitch
-    float muzzleSpeed; // 弹速
-};
+    
+// };
+
+// struct hero_robotMsg
+// {
+//     uint16_t head;
+//     uint8_t foeColor;  // 敌方颜色 0-blue 1-red
+//     float robotYaw;    // 自身Yaw
+//     float robotPitch;  // 自身Pitch
+//     float muzzleSpeed; // 弹速
+// };
 
 union visionArray
 {
