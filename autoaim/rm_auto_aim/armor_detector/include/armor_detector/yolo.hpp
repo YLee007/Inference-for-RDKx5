@@ -10,7 +10,7 @@ namespace rm_auto_aim
 class YOLOBase
 {
 public:
-  virtual std::list<Armor> detect(const cv::Mat & img, int frame_count) = 0;
+  virtual std::list<Armor> detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count) = 0;
 };
 
 class YOLO
@@ -18,7 +18,7 @@ class YOLO
 public:
   YOLO(const std::string & config_path, bool debug = true);
 
-  std::list<Armor> detect(const cv::Mat & img, int frame_count = -1);
+  std::list<Armor> detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count = -1);
 
 private:
   std::unique_ptr<YOLOBase> yolo_;

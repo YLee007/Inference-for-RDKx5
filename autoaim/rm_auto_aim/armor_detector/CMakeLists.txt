@@ -18,6 +18,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(hobot_cv REQUIRED)  # 添加对 hobot_cv 库的依赖
+
 ament_auto_find_build_dependencies()
 
 ###########
@@ -28,8 +30,16 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   DIRECTORY src
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+# 添加对 hobot_cv 的支持
+target_include_directories(${PROJECT_NAME} PUBLIC 
+  ${OpenCV_INCLUDE_DIRS}
+  ${hobot_cv_INCLUDE_DIRS}  
+)
+
+target_link_libraries(${PROJECT_NAME} 
+  ${OpenCV_LIBS}
+  ${hobot_cv_LIBRARIES}  
+)
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN rm_auto_aim::ArmorDetectorNode
@@ -66,3 +76,4 @@ ament_auto_package(
   INSTALL_TO_SHARE
   model
 )
+

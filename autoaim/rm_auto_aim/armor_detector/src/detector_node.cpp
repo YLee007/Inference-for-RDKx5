@@ -84,7 +84,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-    "/image_raw", rclcpp::SensorDataQoS(),
+    "/hbmem_img", rclcpp::SensorDataQoS(),
     std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
 }
 
