@@ -47,15 +47,16 @@ struct Armor
   ArmorType get_type(const Armor & armor);
 
   cv::Rect bbox;
-  int class_id;
+  ArmorName class_id;
   std::vector<cv::Point2f> armor_keypoints;
+  cv::Point2f offset_;
 
   // Number part
   std::string number;
   float confidence;
   std::string classfication_result;
 
-  Armor(int class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints);
+  Armor(ArmorName class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints, const cv::Point2f & offset = cv::Point2f(0, 0));
 };
 
 

@@ -83,7 +83,7 @@ std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & b
 {
   cv::transpose(output, output);
 
-  std::vector<int> class_id;
+  std::vector<ArmorName> class_id;
   std::vector<float> confidences;
   std::vector<cv::Rect> bbox;  // 改为 bbox，保存装甲板边界框
   std::vector<std::vector<cv::Point2f>> armors_key_points;
@@ -121,6 +121,10 @@ std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & b
     armors_key_points.emplace_back(armor_key_points);
     confidences.emplace_back(score);  // 使用检测得到的置信度
     bbox.emplace_back(left, top, width, height);  // 保存装甲板的边界框
+
+    // 确保 class_id 获取正确
+    ArmorName detected_class = static_cast<ArmorName>(max_point.x);  // 通过 max_point 获取类别ID
+    class_id.push_back(detected_class);
   }
 
   // 进行非最大抑制 (NMS) 来过滤重复框
@@ -131,9 +135,9 @@ std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & b
   for (const auto & i : indices) {
     sort_keypoints(armors_key_points[i]);
     if (use_roi_) {
-      armors.emplace_back(class_id[i], bbox[i], armors_key_points[i], offset_);
+      armors.emplace_back(class_id[i], confidences[i], bbox[i], armors_key_points[i], offset_);
     } else {
-      armors.emplace_back(class_id[i], bbox[i], armors_key_points[i]);
+      armors.emplace_back(class_id[i], confidences[i], bbox[i], armors_key_points[i]);
     }
   }
 
@@ -150,7 +154,6 @@ ArmorType YOLO11::get_type(const Armor & armor)
   } else {
     return ArmorType::SMALL;
   }
-  
 }
 
 void YOLO11::draw_detections(const cv::Mat & img, const std::list<Armor> & armors, int frame_count) const
@@ -159,7 +162,7 @@ void YOLO11::draw_detections(const cv::Mat & img, const std::list<Armor> & armor
 
   for (const auto & armor : armors) {
     cv::rectangle(tmp_img, armor.bbox, cv::Scalar(255, 0, 0), 2);
-    cv::putText(tmp_img, fmt::format("ID:{} {:.2f}", armor.class_id, armor.confidence),
+    cv::putText(tmp_img, fmt::format("ID:{} {:.2f}", ARMOR_TYPE_STR[static_cast<int>(armor.type)], armor.confidence),
                 armor.bbox.tl() - cv::Point(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2);
   }
 
@@ -178,4 +181,5 @@ cv::Point2f YOLO11::get_center_norm(const cv::Mat & bgr_img, const cv::Point2f &
 {
   return cv::Point2f(center.x / bgr_img.cols, center.y / bgr_img.rows);
 }
-}
+
+}  // namespace rm_auto_aim

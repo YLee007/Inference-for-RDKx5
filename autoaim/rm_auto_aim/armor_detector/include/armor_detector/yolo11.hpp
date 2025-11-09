@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "armor.hpp"
+#include "yolo.hpp"
 
 namespace rm_auto_aim
 {
