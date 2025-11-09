@@ -6,7 +6,12 @@
 #define ARMOR_DETECTOR__ARMOR_HPP_
 
 #include <opencv2/core.hpp>
+
+// STL
+#include <algorithm>
 #include <string>
+#include <Eigen/Dense>
+#include <opencv2/opencv.hpp>
 #include <vector>
 
 namespace rm_auto_aim
@@ -15,75 +20,44 @@ const int RED = 0;
 const int BLUE = 1;
 
 enum class ArmorType { SMALL, LARGE, INVALID };
-const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
-
 enum class ArmorName {
-    not_armor,
-    one,
-    base,
-    two,
-    sentry,
-    outpost
-    // 其他盔甲名称...
+  B1,
+  B2,
+  B3,
+  B4,
+  B5,
+  B7,
+  R1,
+  R2,
+  R3,
+  R4,
+  R5,
+  R7
 };
-
-struct Light : public cv::Rect
-{
-  Light() = default;
-  explicit Light(cv::Rect box, cv::Point2f top, cv::Point2f bottom, int area, float tilt_angle)
-  : cv::Rect(box), top(top), bottom(bottom), tilt_angle(tilt_angle)
-  {
-    length = cv::norm(top - bottom);
-    width = area / length;
-    center = (top + bottom) / 2;
-  }
-
-  int color;
-  cv::Point2f top, bottom;
-  cv::Point2f center;
-  double length;
-  double width;
-  float tilt_angle;
-};
+const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
 
 struct Armor
 {
-  Armor() = default;
-  Armor(const Light & l1, const Light & l2)
-  {
-    if (l1.center.x < l2.center.x) {
-      left_light = l1, right_light = l2;
-    } else {
-      left_light = l2, right_light = l1;
-    }
-    center = (left_light.center + right_light.center) / 2;
-  }
+  ArmorName name;
 
-  // Light pairs part
-  Light left_light, right_light;
-  cv::Point2f center;
-  
-  // Additional member for normalized center (relative to image size)
-  cv::Point2f center_norm;  // 归一化后的中心坐标 (相对于图像大小)
+  cv::Point2f center;       // 不是对角线交点，不能作为实际中心！
+  cv::Point2f center_norm;
 
   ArmorType type;
+  ArmorType get_type(const Armor & armor);
+
+  cv::Rect bbox;
+  int class_id;
+  std::vector<cv::Point2f> armor_keypoints;
 
   // Number part
-  cv::Mat number_img;
   std::string number;
   float confidence;
-  std::string classification_result;
+  std::string classfication_result;
 
-  // Additional fields for armor name and color
-  ArmorName name = ArmorName::not_armor;  // 默认是 no_armor
-  int color = RED;  // 默认红色
-
-  // Additional members for storing the points of the armor (e.g., the corners)
-  std::vector<cv::Point2f> points;  // 盔甲的关键点（例如四个角点）
-
-  // Debugging information (if needed)
-  std::string debug_info;  // 可选：用于存储调试信息
+  Armor(int class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints);
 };
+
 
 }  // namespace rm_auto_aim
 

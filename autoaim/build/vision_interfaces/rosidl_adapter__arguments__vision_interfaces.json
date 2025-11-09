@@ -1,7 +1,0 @@
-{
-  "package_name": "vision_interfaces",
-  "non_idl_tuples": [
-    "/home/zjy/Inference-for-RDKx5/autoaim/vision_interfaces:msg/Robot.msg",
-    "/home/zjy/Inference-for-RDKx5/autoaim/vision_interfaces:msg/AutoAim.msg"
-  ]
-}

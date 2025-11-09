@@ -1,7 +1,7 @@
 {
 	"model_file": "/opt/hobot/model/x5/basic/yolo11m_detect_bayese_640x640_nv12_modified.bin",
 	"task_num": 4,
-	"dnn_Parser": "yolov8",
+	"dnn_Parser": "yolov11",
 	"model_output_count": 6,
 	"reg_max": 16,
 	"class_num": 80,

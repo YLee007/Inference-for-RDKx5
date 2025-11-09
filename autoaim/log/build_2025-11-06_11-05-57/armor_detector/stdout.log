@@ -1,8 +1,0 @@
-[35m[1mConsolidate compiler generated dependencies of target armor_detector[0m
-[  5%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/detector.cpp.o[0m
-[ 17%] Built target gtest_main
-[ 23%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/detector_node.cpp.o[0m
-[ 35%] Built target armor_detector_node
-[ 41%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/number_classifier.cpp.o[0m
-[ 47%] [32mBuilding CXX object CMakeFiles/armor_detector.dir/src/yolo11.cpp.o[0m
-[ 58%] Built target gtest

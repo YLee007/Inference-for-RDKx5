@@ -32,12 +32,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
-  // Detector
-  detector_= initDetector();
-
-  // YOLO11
-  yolo11_ = initYOLO11();  
-
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
     "/detector/armors", rclcpp::SensorDataQoS());
@@ -66,12 +60,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 
   marker_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("/detector/marker", 10);
-
-  // Debug Publishers
-  debug_ = this->declare_parameter("debug", false);
-  if (debug_) {
-    createDebugPublishers();
-  }
 
   // Task subscriber
   is_aim_task_ = true;
@@ -186,50 +174,6 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
   }
 }
 
-std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
-{
-  rcl_interfaces::msg::ParameterDescriptor param_desc;
-  param_desc.integer_range.resize(1);
-  param_desc.integer_range[0].step = 1;
-  param_desc.integer_range[0].from_value = 0;
-  param_desc.integer_range[0].to_value = 255;
-  int binary_thres = declare_parameter("binary_thres", 160, param_desc);
-
-  param_desc.description = "0-RED, 1-BLUE";
-  param_desc.integer_range[0].from_value = 0;
-  param_desc.integer_range[0].to_value = 1;
-  auto detect_color = declare_parameter("detect_color", RED, param_desc);
-
-  Detector::LightParams l_params = {
-    .min_ratio = declare_parameter("light.min_ratio", 0.1),
-    .max_ratio = declare_parameter("light.max_ratio", 0.4),
-    .max_angle = declare_parameter("light.max_angle", 35.0),
-    .min_fill_ratio = declare_parameter("light.min_fill_ratio", 0.8),
-  };
-
-  Detector::ArmorParams a_params = {
-    .min_light_ratio = declare_parameter("armor.min_light_ratio", 0.7),
-    .min_small_center_distance = declare_parameter("armor.min_small_center_distance", 0.8),
-    .max_small_center_distance = declare_parameter("armor.max_small_center_distance", 3.2),
-    .min_large_center_distance = declare_parameter("armor.min_large_center_distance", 3.2),
-    .max_large_center_distance = declare_parameter("armor.max_large_center_distance", 5.5),
-    .max_angle = declare_parameter("armor.max_angle", 35.0)};
-
-  auto detector = std::make_unique<Detector>(binary_thres, detect_color, l_params, a_params);
-
-  // Init classifier
-  auto pkg_path = ament_index_cpp::get_package_share_directory("armor_detector");
-  auto model_path = pkg_path + "/model/mlp.onnx";
-  auto label_path = pkg_path + "/model/label.txt";
-  double threshold = this->declare_parameter("classifier_threshold", 0.7);
-  std::vector<std::string> ignore_classes =
-    this->declare_parameter("ignore_classes", std::vector<std::string>{"negative"});
-  detector->classifier =
-    std::make_unique<NumberClassifier>(model_path, label_path, threshold, ignore_classes);
-
-  return detector;
-}
-
 std::vector<Armor> ArmorDetectorNode::detectArmors(
   const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
@@ -282,36 +226,6 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   }
 
   return armors;
-}
-
-void ArmorDetectorNode::createDebugPublishers()
-{
-  lights_data_pub_ =
-    this->create_publisher<auto_aim_interfaces::msg::DebugLights>("/detector/debug_lights", 10);
-  armors_data_pub_ =
-    this->create_publisher<auto_aim_interfaces::msg::DebugArmors>("/detector/debug_armors", 10);
-
-  binary_img_pub_ = image_transport::create_publisher(this, "/detector/binary_img");
-  number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");
-  result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
-}
-
-void ArmorDetectorNode::destroyDebugPublishers()
-{
-  lights_data_pub_.reset();
-  armors_data_pub_.reset();
-
-  binary_img_pub_.shutdown();
-  number_img_pub_.shutdown();
-  result_img_pub_.shutdown();
-}
-
-void ArmorDetectorNode::publishMarkers()
-{
-  using Marker = visualization_msgs::msg::Marker;
-  armor_marker_.action = armors_msg_.armors.empty() ? Marker::DELETE : Marker::ADD;
-  marker_array_.markers.emplace_back(armor_marker_);
-  marker_pub_->publish(marker_array_);
 }
 
 }  // namespace rm_auto_aim

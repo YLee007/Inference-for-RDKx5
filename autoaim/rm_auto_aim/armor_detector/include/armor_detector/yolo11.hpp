@@ -8,8 +8,6 @@
 #include <vector>
 
 #include "armor.hpp"
-#include "detector.hpp"
-#include "yolo.hpp"
 
 namespace rm_auto_aim
 {
@@ -20,11 +18,7 @@ public:
   YOLO11(const std::string & config_path, bool debug);
 
   // Override the detect method for inference
-  std::list<Armor> detect(const cv::Mat & bgr_img, int frame_count) override;
-
-  // Override postprocess method to filter and process detections
-  std::list<Armor> postprocess(
-    double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count) override;
+  std::list<Armor> detect(const cv::Mat & bgr_img, int frame_count);
 
 private:
   // Paths for model configuration and weights
@@ -43,21 +37,24 @@ private:
   cv::Point2f offset_;
   cv::Mat tmp_img_;   // Temporary image storage
 
-  Detector detector_;
-
   // Add frame count as a class member variable to track frames
   int frame_count_;   // Frame count (for tracking video frames)
 
-  // Helper methods
-  bool check_name(const Armor & armor) const;
-  bool check_type(const Armor & armor) const;
-
+  // Method to get normalized center coordinates
   cv::Point2f get_center_norm(const cv::Mat & bgr_img, const cv::Point2f & center) const;
 
+  // Method to parse model output and return list of Armor objects
   std::list<Armor> parse(double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count);
+  
+  ArmorType get_type(const Armor& armor);
 
+  // Method to save armor detection images (for debugging)
   void save(const Armor & armor) const;
+
+  // Method to draw detection results on the image
   void draw_detections(const cv::Mat & img, const std::list<Armor> & armors, int frame_count) const;
+
+  // Method to sort the keypoints of armor (used for detecting bounding box corners)
   void sort_keypoints(std::vector<cv::Point2f> & keypoints);
 };
 

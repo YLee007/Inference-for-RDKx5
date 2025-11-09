@@ -18,7 +18,6 @@
 #include <string>
 #include <vector>
 
-#include "number_classifier.hpp"
 #include "pnp_solver.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
 #include "yolo.hpp"
@@ -34,11 +33,7 @@ public:
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
   std::unique_ptr<YOLO11> initYOLO11();
-  std::unique_ptr<Detector> initDetector();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
-
-  void createDebugPublishers();
-  void destroyDebugPublishers();
 
   void publishMarkers();
 
@@ -46,12 +41,6 @@ private:
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr task_sub_;
   bool is_aim_task_;
   void taskCallback(const std_msgs::msg::String::SharedPtr task_msg);
-
-  // Armor Detector
-  std::unique_ptr<Detector> detector_;
-
-  // Armor YOLO11
-  std::unique_ptr<YOLO11> yolo11_;
 
   // Detected armors publisher
   auto_aim_interfaces::msg::Armors armors_msg_;
@@ -71,16 +60,6 @@ private:
 
   // Image subscription
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
-
-  // Debug information
-  bool debug_;
-  std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
-  std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
-  rclcpp::Publisher<auto_aim_interfaces::msg::DebugLights>::SharedPtr lights_data_pub_;
-  rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
-  image_transport::Publisher binary_img_pub_;
-  image_transport::Publisher number_img_pub_;
-  image_transport::Publisher result_img_pub_;
 };
 
 }  // namespace rm_auto_aim

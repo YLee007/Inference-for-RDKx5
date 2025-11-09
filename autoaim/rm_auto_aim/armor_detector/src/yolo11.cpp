@@ -1,8 +1,6 @@
 #include "armor_detector/yolo11.hpp"
-
 #include <fmt/chrono.h>
 #include <yaml-cpp/yaml.h>
-
 #include <filesystem>
 #include <opencv2/dnn.hpp>
 
@@ -21,6 +19,7 @@ YOLO11::YOLO11(const std::string & config_path, bool debug)
   device_ = yaml["device"].as<std::string>();
   binary_threshold_ = yaml["threshold"].as<double>();
   min_confidence_ = yaml["min_confidence"].as<double>();
+
   int x = 0, y = 0, width = 0, height = 0;
   x = yaml["roi"]["x"].as<int>();
   y = yaml["roi"]["y"].as<int>();
@@ -82,13 +81,13 @@ std::list<Armor> YOLO11::detect(const cv::Mat & raw_img, int frame_count)
 
 std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count)
 {
-  // for each row: xywh + classess
   cv::transpose(output, output);
 
-  std::vector<int> ids;
+  std::vector<int> class_id;
   std::vector<float> confidences;
-  std::vector<cv::Rect> boxes;
+  std::vector<cv::Rect> bbox;  // 改为 bbox，保存装甲板边界框
   std::vector<std::vector<cv::Point2f>> armors_key_points;
+
   for (int r = 0; r < output.rows; r++) {
     auto xywh = output.row(r).colRange(0, 4);
     auto scores = output.row(r).colRange(4, 4 + class_num_);
@@ -100,8 +99,9 @@ std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & b
     cv::Point max_point;
     cv::minMaxLoc(scores, nullptr, &score, nullptr, &max_point);
 
-    if (score < score_threshold_) continue;
+    if (score < min_confidence_) continue;  // 如果置信度低于阈值则跳过
 
+    // 获取边界框参数
     auto x = xywh.at<float>(0);
     auto y = xywh.at<float>(1);
     auto w = xywh.at<float>(2);
@@ -111,130 +111,71 @@ std::list<Armor> YOLO11::parse(double scale, cv::Mat & output, const cv::Mat & b
     auto width = static_cast<int>(w / scale);
     auto height = static_cast<int>(h / scale);
 
+    // 获取装甲板的关键点
     for (int i = 0; i < 4; i++) {
       float x = one_key_points.at<float>(0, i * 2 + 0) / scale;
       float y = one_key_points.at<float>(0, i * 2 + 1) / scale;
       cv::Point2f kp = {x, y};
       armor_key_points.push_back(kp);
     }
-    ids.emplace_back(max_point.x);
-    confidences.emplace_back(score);
-    boxes.emplace_back(left, top, width, height);
     armors_key_points.emplace_back(armor_key_points);
+    confidences.emplace_back(score);  // 使用检测得到的置信度
+    bbox.emplace_back(left, top, width, height);  // 保存装甲板的边界框
   }
 
+  // 进行非最大抑制 (NMS) 来过滤重复框
   std::vector<int> indices;
-  cv::dnn::NMSBoxes(boxes, confidences, score_threshold_, nms_threshold_, indices);
+  cv::dnn::NMSBoxes(bbox, confidences, min_confidence_, nms_threshold_, indices);
 
   std::list<Armor> armors;
   for (const auto & i : indices) {
     sort_keypoints(armors_key_points[i]);
     if (use_roi_) {
-      armors.emplace_back(ids[i], confidences[i], boxes[i], armors_key_points[i], offset_);
+      armors.emplace_back(class_id[i], bbox[i], armors_key_points[i], offset_);
     } else {
-      armors.emplace_back(ids[i], confidences[i], boxes[i], armors_key_points[i]);
+      armors.emplace_back(class_id[i], bbox[i], armors_key_points[i]);
     }
   }
 
-  for (auto it = armors.begin(); it != armors.end();) {
-    if (!check_name(*it)) {
-      it = armors.erase(it);
-      continue;
-    }
-
-    if (!check_type(*it)) {
-      it = armors.erase(it);
-      continue;
-    }
-
-    it->center_norm = get_center_norm(bgr_img, it->center);
-    ++it;
-  }
-
+  // 调试模式下显示检测结果
   if (debug_) draw_detections(bgr_img, armors, frame_count);
 
   return armors;
 }
 
-bool YOLO11::check_name(const Armor & armor) const
+ArmorType YOLO11::get_type(const Armor & armor)
 {
-  auto name_ok = armor.name != ArmorName::not_armor;
-  auto confidence_ok = armor.confidence > min_confidence_;
-
-  return name_ok && confidence_ok;
+  if (armor.class_id == ArmorName::B1 || armor.class_id == ArmorName::R1) {
+    return ArmorType::LARGE;
+  } else {
+    return ArmorType::SMALL;
+  }
+  
 }
 
-bool YOLO11::check_type(const Armor & armor) const
+void YOLO11::draw_detections(const cv::Mat & img, const std::list<Armor> & armors, int frame_count) const
 {
-  auto name_ok = (armor.type == ArmorType::SMALL)
-                   ? (armor.name != ArmorName::one && armor.name != ArmorName::base)
-                   : (armor.name != ArmorName::two && armor.name != ArmorName::sentry &&
-                      armor.name != ArmorName::outpost);
+  cv::Mat tmp_img = img.clone();
 
-  return name_ok;
-}
+  for (const auto & armor : armors) {
+    cv::rectangle(tmp_img, armor.bbox, cv::Scalar(255, 0, 0), 2);
+    cv::putText(tmp_img, fmt::format("ID:{} {:.2f}", armor.class_id, armor.confidence),
+                armor.bbox.tl() - cv::Point(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2);
+  }
 
-cv::Point2f YOLO11::get_center_norm(const cv::Mat & bgr_img, const cv::Point2f & center) const
-{
-  auto h = bgr_img.rows;
-  auto w = bgr_img.cols;
-  return {center.x / w, center.y / h};
+  std::string filename = fmt::format("{}/frame_{}.jpg", save_path_, frame_count);
+  cv::imwrite(filename, tmp_img);
 }
 
 void YOLO11::sort_keypoints(std::vector<cv::Point2f> & keypoints)
 {
-  if (keypoints.size() != 4) {
-    std::cout << "beyond 4!!" << std::endl;
-    return;
-  }
-
   std::sort(keypoints.begin(), keypoints.end(), [](const cv::Point2f & a, const cv::Point2f & b) {
-    return a.y < b.y;
+    return a.x < b.x;  // 按 x 坐标排序
   });
-
-  std::vector<cv::Point2f> top_points = {keypoints[0], keypoints[1]};
-  std::vector<cv::Point2f> bottom_points = {keypoints[2], keypoints[3]};
-
-  std::sort(top_points.begin(), top_points.end(), [](const cv::Point2f & a, const cv::Point2f & b) {
-    return a.x < b.x;
-  });
-
-  std::sort(
-    bottom_points.begin(), bottom_points.end(),
-    [](const cv::Point2f & a, const cv::Point2f & b) { return a.x < b.x; });
-
-  keypoints[0] = top_points[0];     // top-left
-  keypoints[1] = top_points[1];     // top-right
-  keypoints[2] = bottom_points[1];  // bottom-right
-  keypoints[3] = bottom_points[0];  // bottom-left
 }
 
-void YOLO11::draw_detections(
-  const cv::Mat & img, const std::list<Armor> & armors, int frame_count) const
+cv::Point2f YOLO11::get_center_norm(const cv::Mat & bgr_img, const cv::Point2f & center) const
 {
-  auto detection = img.clone();
-  tools::draw_text(detection, fmt::format("[{}]", frame_count), {10, 30}, {255, 255, 255});
-  for (const auto & armor : armors) {
-    auto info = fmt::format(
-      "{:.2f} {} {} {}", armor.confidence, COLORS[armor.color], ARMOR_NAMES[armor.name],
-      ARMOR_TYPE_STR[armor.type]);
-    tools::draw_points(detection, armor.points, {0, 255, 0});
-    tools::draw_text(detection, info, armor.center, {0, 255, 0});
-  }
-
-  if (use_roi_) {
-    cv::Scalar green(0, 255, 0);
-    cv::rectangle(detection, roi_, green, 2);
-  }
-  cv::resize(detection, detection, {}, 0.5, 0.5);  // 显示时缩小图片尺寸
-  cv::imshow("detection", detection);
+  return cv::Point2f(center.x / bgr_img.cols, center.y / bgr_img.rows);
 }
-
-void YOLO11::save(const Armor & armor) const
-{
-  auto file_name = fmt::format("{:%Y-%m-%d_%H-%M-%S}", std::chrono::system_clock::now());
-  auto img_path = fmt::format("{}/{}_{}.jpg", save_path_, armor.name, file_name);
-  cv::imwrite(img_path, tmp_img_);
 }
-
-}  // namespace auto_aim

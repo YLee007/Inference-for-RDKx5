@@ -26,11 +26,4 @@ std::list<Armor> YOLO::detect(const cv::Mat & img, int frame_count)
   return yolo_->detect(img, frame_count);
 }
 
-std::list<Armor> YOLO::postprocess(
-  double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count)
-{
-  // 调用 YOLO11 对象的 postprocess 方法
-  return yolo_->postprocess(scale, output, bgr_img, frame_count);
-}
-
 }  // namespace rm_auto_aim

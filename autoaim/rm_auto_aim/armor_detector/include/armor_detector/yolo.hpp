@@ -4,41 +4,26 @@
 #include <opencv2/opencv.hpp>
 
 #include "armor.hpp"
-#include "yolo11.hpp"
 
 namespace rm_auto_aim
 {
-YOLO::YOLO(const std::string & config_path, bool debug)
+class YOLOBase
 {
-  auto yaml = YAML::LoadFile(config_path);
-  auto yolo_name = yaml["yolo_name"].as<std::string>();
+public:
+  virtual std::list<Armor> detect(const cv::Mat & img, int frame_count) = 0;
+};
 
-  if (yolo_name == "yolov8") {
-    yolo_ = std::make_unique<YOLOV8>(config_path, debug);
-  }
-
-  else if (yolo_name == "yolo11") {
-    yolo_ = std::make_unique<YOLO11>(config_path, debug);
-  }
-
-  else if (yolo_name == "yolov5") {
-    yolo_ = std::make_unique<YOLOV5>(config_path, debug);
-  }
-
-  else {
-    throw std::runtime_error("Unknown yolo name: " + yolo_name + "!");
-  }
-}
-
-std::list<Armor> YOLO::detect(const cv::Mat & img, int frame_count)
+class YOLO
 {
-  return yolo_->detect(img, frame_count);
-}
+public:
+  YOLO(const std::string & config_path, bool debug = true);
 
-std::list<Armor> YOLO::postprocess(
-  double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count)
-{
-  return yolo_->postprocess(scale, output, bgr_img, frame_count);
-}
+  std::list<Armor> detect(const cv::Mat & img, int frame_count = -1);
+
+private:
+  std::unique_ptr<YOLOBase> yolo_;
+};
 
 }  // namespace auto_aim
+
+#endif  // AUTO_AIM__YOLO_HPP

@@ -1,4 +1,0 @@
-[01m[K/home/zjy/Inference-for-RDKx5/autoaim/vision_attacker/src/vision_attacker_node.cpp:[m[K In member function ‘[01m[Kdouble Tracker_node::solveTrajectory(double&, double, double, double, double, double)[m[K’:
-[01m[K/home/zjy/Inference-for-RDKx5/autoaim/vision_attacker/src/vision_attacker_node.cpp:156:10:[m[K [01;35m[Kwarning: [m[Kvariable ‘[01m[Kconverged[m[K’ set but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-but-set-variable-Wunused-but-set-variable]8;;[m[K]
-  156 |     bool [01;35m[Kconverged[m[K = false;
-      |          [01;35m[K^~~~~~~~~[m[K

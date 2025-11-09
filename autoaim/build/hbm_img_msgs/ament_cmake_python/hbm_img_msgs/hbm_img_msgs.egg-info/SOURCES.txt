@@ -1,8 +1,0 @@
-setup.py
-hbm_img_msgs/__init__.py
-hbm_img_msgs.egg-info/PKG-INFO
-hbm_img_msgs.egg-info/SOURCES.txt
-hbm_img_msgs.egg-info/dependency_links.txt
-hbm_img_msgs.egg-info/top_level.txt
-hbm_img_msgs/msg/__init__.py
-hbm_img_msgs/msg/_hbm_msg1080_p.py

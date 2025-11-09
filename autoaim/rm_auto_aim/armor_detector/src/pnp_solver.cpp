@@ -38,10 +38,10 @@ bool PnPSolver::solvePnP(const Armor & armor, cv::Mat & rvec, cv::Mat & tvec)
   std::vector<cv::Point2f> image_armor_points;
 
   // Fill in image points
-  image_armor_points.emplace_back(armor.left_light.bottom);
-  image_armor_points.emplace_back(armor.left_light.top);
-  image_armor_points.emplace_back(armor.right_light.top);
-  image_armor_points.emplace_back(armor.right_light.bottom);
+  image_armor_points.emplace_back(armor.armor_keypoints[0]);  // bottom left
+  image_armor_points.emplace_back(armor.armor_keypoints[1]);  // top left
+  image_armor_points.emplace_back(armor.armor_keypoints[2]);  // top right
+  image_armor_points.emplace_back(armor.armor_keypoints[3]);  // bottom right
 
   // Solve pnp
   auto object_points = armor.type == ArmorType::SMALL ? small_armor_points_ : large_armor_points_;
