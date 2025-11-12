@@ -4,27 +4,26 @@
 // ROS
 #include <geometry_msgs/msg/point.hpp>
 #include <image_transport/image_transport.hpp>
-#include <image_transport/publisher.hpp>
-#include <image_transport/subscriber_filter.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/CameraInfo.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <rcl_interfaces/msg/parameter.hpp>
+#include <auto_aim_interfaces/msg/armors.hpp>
+#include <auto_aim_interfaces/msg/debug_armors.hpp>
+#include <auto_aim_interfaces/msg/debug_lights.hpp>
 
 // STD
-#include <memory>
-#include <string>
-#include <vector>
+// Minimal includes for this header file
 
 #include "pnp_solver.hpp"
-#include "auto_aim_interfaces/msg/armors.hpp"
 #include "yolo.hpp"
 
 namespace rm_auto_aim
 {
-
 class ArmorDetectorNode : public rclcpp::Node
 {
 public:
@@ -32,7 +31,6 @@ public:
 
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
-  std::unique_ptr<YOLO11> initYOLO11();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   void publishMarkers();
@@ -60,6 +58,20 @@ private:
 
   // Image subscription
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
+
+  std::unique_ptr<YOLO11> yolo11_;
+  bool debug_;
+  int frame_count_ = 0;
+  rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
+  image_transport::Publisher binary_img_pub_;
+  image_transport::Publisher number_img_pub_;
+  image_transport::Publisher result_img_pub_;
+
+  std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
+  std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
+
+  void createDebugPublishers();
+  void destroyDebugPublishers();
 };
 
 }  // namespace rm_auto_aim

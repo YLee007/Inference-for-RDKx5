@@ -8,7 +8,6 @@
 #include <tf2/convert.h>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <image_transport/image_transport.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <rclcpp/duration.hpp>
@@ -16,21 +15,32 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // STD
-#include <algorithm>
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <image_transport/image_transport.hpp>
 #include "armor_detector/armor.hpp"
 #include "armor_detector/detector_node.hpp"
+#include "auto_aim_interfaces/msg/debug_armors.hpp"
+#include "auto_aim_interfaces/msg/debug_lights.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "rcl_interfaces/msg/parameter.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 namespace rm_auto_aim
 {
 ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
-: Node("armor_detector", options)
+: rclcpp::Node("armor_detector", options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
+
+  // Create detector
+  std::string package_share_directory = ament_index_cpp::get_package_share_directory("armor_detector");
+  std::string config_path = package_share_directory + "/config/yolo11.json";
+  yolo11_ = std::make_unique<YOLO11>(config_path, debug_);
 
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
@@ -75,11 +85,11 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/camera_info", rclcpp::SensorDataQoS(),
-    [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
-      cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
-      cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
-      pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
+    "/camer-info", rclcpp::SensorDataQoS(),
+    [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camer_info) {
+      cam_center_ = cv::Point2f(camer_info->k[2], camer_info->k[5]);
+      cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camer_info);
+      pnp_solver_ = std::make_unique<PnPSolver>(camer_info->k, camer_info->d);
       cam_info_sub_.reset();
     });
 
@@ -90,6 +100,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
 {
+  using std::placeholders::_1;
   std::string task_mode = task_msg->data;
   if (task_mode == "aim") {
     is_aim_task_ = true;
@@ -100,6 +111,8 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)
 {
+  using std::placeholders::_1;
+  using namespace std::chrono_literals;
   auto armors = detectArmors(img_msg);
 
   if (pnp_solver_ != nullptr && is_aim_task_) {
@@ -177,13 +190,10 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 std::vector<Armor> ArmorDetectorNode::detectArmors(
   const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
-  // Convert ROS img to cv::Mat
-  auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
+  using std::placeholders::_1;
+  using namespace std::chrono_literals;
 
-  // Update params
-  detector_->binary_thres = get_parameter("binary_thres").as_int();
-  detector_->detect_color = get_parameter("detect_color").as_int();
-  detector_->classifier->threshold = get_parameter("classifier_threshold").as_double();
+  auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
 
   auto armors = yolo11_->detect(img,frame_count_);
 
@@ -191,29 +201,8 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;
   RCLCPP_DEBUG_STREAM(this->get_logger(), "Latency: " << latency << "ms");
 
-  // Publish debug info
   if (debug_) {
-    binary_img_pub_.publish(
-      cv_bridge::CvImage(img_msg->header, "mono8", detector_->binary_img).toImageMsg());
-
-    // Sort lights and armors data by x coordinate
-    std::sort(
-      detector_->debug_lights.data.begin(), detector_->debug_lights.data.end(),
-      [](const auto & l1, const auto & l2) { return l1.center_x < l2.center_x; });
-    std::sort(
-      detector_->debug_armors.data.begin(), detector_->debug_armors.data.end(),
-      [](const auto & a1, const auto & a2) { return a1.center_x < a2.center_x; });
-
-    lights_data_pub_->publish(detector_->debug_lights);
-    armors_data_pub_->publish(detector_->debug_armors);
-
-    if (!armors.empty()) {
-      auto all_num_img = detector_->getAllNumbersImage();
-      number_img_pub_.publish(
-        *cv_bridge::CvImage(img_msg->header, "mono8", all_num_img).toImageMsg());
-    }
-
-    detector_->drawResults(img);
+    // Debug visualization is handled within YOLO11::detect if debug_ is true
     // Draw camera center
     cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
     // Draw latency
@@ -226,6 +215,25 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   }
 
   return armors;
+}
+
+void ArmorDetectorNode::destroyDebugPublishers()
+{
+  binary_img_pub_.reset();
+  armors_data_pub_.reset();
+  number_img_pub_.reset();
+  result_img_pub_.reset();
+}
+
+void ArmorDetectorNode::createDebugPublishers()
+{
+  result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
+  binary_img_pub_ = image_transport::create_publisher(this, "/detector/binary_img");
+  // lights_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugLights>(
+  //   "/detector/debug_lights", rclcpp::SensorDataQoS());
+  armors_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugArmors>(
+    "/detector/debug_armors", rclcpp::SensorDataQoS());
+  number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");
 }
 
 }  // namespace rm_auto_aim
