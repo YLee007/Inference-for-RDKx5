@@ -8,6 +8,11 @@
 #include "tools/img_tools.hpp"
 #include "tools/logger.hpp"
 
+// STD
+#include <cstdint> // For uint8_t
+#include <functional>
+#include <vector>
+
 // 引入 dnn_node 相关头文件
 #include "dnn_node/dnn_node_impl.h"
 
@@ -24,20 +29,20 @@ public:
   ~YOLO11();
 
   // 同步推理接口：输入 NV12 图像，阻塞返回检测结果
-  std::list<Armor> infer(const uint8_t* nv12_img_data, int img_width, int img_height,
+  std::vector<Armor> infer(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                          int alloctask_timeout_ms = 1000, int infer_timeout_ms = 2000);
 
   // 异步推理接口：输入 NV12 图像，通过回调返回结果（非阻塞）
-  using InferCallback = std::function<void(std::list<Armor>)>;
-  int infer_async(const uint8_t* nv12_img_data, int img_width, int img_height,
+  using InferCallback = std::function<void(std::vector<Armor>)>;
+  int infer_async(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                   InferCallback callback, int alloctask_timeout_ms = 1000, int infer_timeout_ms = 2000);
 
   // 实现基类纯虚接口：输入 RDK 原生图像，返回装甲板列表
-  std::list<Armor> detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count) override;
+  std::vector<Armor> detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count) override;
 
 private:
   // 预处理：NV12 图像转 dnn_node 所需的 DNNInput（NV12PyramidInput）
-  bool preprocess(const uint8_t* nv12_img_data, int img_width, int img_height,
+  bool preprocess(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                   std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>& dnn_inputs);
 
   // 后处理回调：适配 dnn_node_impl 的 PostProcessCbType 格式
@@ -45,11 +50,11 @@ private:
                    InferCallback callback = nullptr);
 
   // 解析输出张量：将 dnn_node 输出转为 Armor 列表
-  std::list<Armor> parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output);
+  std::vector<Armor> parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output);
 
   // 原有辅助函数（适配修改）
   ArmorType get_type(const Armor & armor);
-  void draw_detections(const cv::Mat& img, const std::list<Armor> & armors);
+  void draw_detections(const cv::Mat& img, const std::vector<Armor> & armors);
   void sort_keypoints(std::vector<cv::Point2f> & keypoints);
   cv::Point2f get_center_norm(const cv::Mat & bgr_img, const cv::Point2f & center) const;
 
@@ -145,7 +150,7 @@ YOLO11::~YOLO11()
 }
 
 // 实现基类的 detect 接口：输入 RDK 原生图像，返回装甲板列表
-std::list<Armor> YOLO11::detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count)
+std::vector<Armor> YOLO11::detect(const std::shared_ptr<hobotcv::Image> & hobot_img, int frame_count)
 {
   // 1. 校验输入有效性
   if (!hobot_img) {
@@ -161,7 +166,7 @@ std::list<Armor> YOLO11::detect(const std::shared_ptr<hobotcv::Image> & hobot_im
   }
 
   // 3. 从 RDK 图像中提取 NV12 原始数据、宽高
-  const uint8_t* nv12_data = static_cast<const uint8_t*>(hobot_img->data());
+  const std::uint8_t* nv12_data = static_cast<const std::uint8_t*>(hobot_img->data());
   int img_w = hobot_img->width();
   int img_h = hobot_img->height();
 
@@ -171,7 +176,7 @@ std::list<Armor> YOLO11::detect(const std::shared_ptr<hobotcv::Image> & hobot_im
   // 5. 调试模式：绘制检测结果（适配 RDK 图像）
   if (debug_) {
     // 将 RDK 图像（NV12）转为 cv::Mat 用于绘制
-    cv::Mat nv12_mat(img_h * 3 / 2, img_w, CV_8UC1, const_cast<uint8_t*>(nv12_data));
+    cv::Mat nv12_mat(img_h * 3 / 2, img_w, CV_8UC1, const_cast<std::uint8_t*>(nv12_data));
     cv::Mat bgr_mat;
     cv::cvtColor(nv12_mat, bgr_mat, cv::COLOR_YUV2BGR_NV12);
     draw_detections(bgr_mat, armors);  // 复用已实现的绘制方法
@@ -184,7 +189,7 @@ std::list<Armor> YOLO11::detect(const std::shared_ptr<hobotcv::Image> & hobot_im
 }
 
 // 预处理：NV12 图像转 dnn_node 所需的 DNNInput（NV12PyramidInput）
-bool YOLO11::preprocess(const uint8_t* nv12_img_data, int img_width, int img_height,
+bool YOLO11::preprocess(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                         std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>& dnn_inputs)
 {
   dnn_inputs.clear();
@@ -230,7 +235,7 @@ bool YOLO11::preprocess(const uint8_t* nv12_img_data, int img_width, int img_hei
 }
 
 // 同步推理接口实现
-std::list<Armor> YOLO11::infer(const uint8_t* nv12_img_data, int img_width, int img_height,
+std::vector<Armor> YOLO11::infer(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                                int alloctask_timeout_ms, int infer_timeout_ms)
 {
   frame_count_++;
@@ -268,7 +273,7 @@ std::list<Armor> YOLO11::infer(const uint8_t* nv12_img_data, int img_width, int 
   // 5. 调试模式：绘制检测结果并保存
   if (debug_) {
     // NV12 转 BGR（用于绘制）
-    cv::Mat nv12_mat(img_height * 3 / 2, img_width, CV_8UC1, const_cast<uint8_t*>(nv12_img_data));
+    cv::Mat nv12_mat(img_height * 3 / 2, img_width, CV_8UC1, const_cast<std::uint8_t*>(nv12_img_data));
     cv::Mat bgr_mat;
     cv::cvtColor(nv12_mat, bgr_mat, cv::COLOR_YUV2BGR_NV12);
     draw_detections(bgr_mat, armors);
@@ -278,7 +283,7 @@ std::list<Armor> YOLO11::infer(const uint8_t* nv12_img_data, int img_width, int 
 }
 
 // 异步推理接口实现
-int YOLO11::infer_async(const uint8_t* nv12_img_data, int img_width, int img_height,
+int YOLO11::infer_async(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                         InferCallback callback, int alloctask_timeout_ms, int infer_timeout_ms)
 {
   if (!callback) {
@@ -295,7 +300,7 @@ int YOLO11::infer_async(const uint8_t* nv12_img_data, int img_width, int img_hei
   }
 
   // 2. 拷贝原图（异步模式下避免输入数据生命周期问题）
-  cv::Mat nv12_mat(img_height * 3 / 2, img_width, CV_8UC1, const_cast<uint8_t*>(nv12_img_data));
+  cv::Mat nv12_mat(img_height * 3 / 2, img_width, CV_8UC1, const_cast<std::uint8_t*>(nv12_img_data));
   cv::Mat bgr_mat;
   cv::cvtColor(nv12_mat, bgr_mat, cv::COLOR_YUV2BGR_NV12);
   auto img_ptr = std::make_shared<cv::Mat>(bgr_mat.clone());
@@ -349,9 +354,9 @@ void YOLO11::postprocess(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& 
 }
 
 // 解析输出张量：将 dnn_node 输出转为 Armor 列表
-std::list<Armor> YOLO11::parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output)
+std::vector<Armor> YOLO11::parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output)
 {
-  std::list<Armor> armors;
+  std::vector<Armor> armors;
 
   // 检查输出有效性
   if (!output || output->output_tensors.empty()) {
@@ -444,9 +449,11 @@ std::list<Armor> YOLO11::parse_output(const std::shared_ptr<hobot::dnn_node::Dnn
   for (int idx : indices) {
     sort_keypoints(key_points_list[idx]);
     if (use_roi_) {
-      armors.emplace_back(class_ids[idx], confidences[idx], bboxes[idx], key_points_list[idx], offset_);
+      cv::Point2f center = cv::Point2f(bboxes[idx].x + bboxes[idx].width / 2.0f, bboxes[idx].y + bboxes[idx].height / 2.0f);
+      armors.emplace_back(class_ids[idx], confidences[idx], bboxes[idx], key_points_list[idx], center);
     } else {
-      armors.emplace_back(class_ids[idx], confidences[idx], bboxes[idx], key_points_list[idx]);
+      cv::Point2f center = cv::Point2f(bboxes[idx].x + bboxes[idx].width / 2.0f, bboxes[idx].y + bboxes[idx].height / 2.0f);
+      armors.emplace_back(class_ids[idx], confidences[idx], bboxes[idx], key_points_list[idx], center);
     }
     armors.back().type = get_type(armors.back());
   }
@@ -462,7 +469,7 @@ ArmorType YOLO11::get_type(const Armor & armor)
          ArmorType::LARGE : ArmorType::SMALL;
 }
 
-void YOLO11::draw_detections(const cv::Mat& img, const std::list<Armor> & armors)
+void YOLO11::draw_detections(const cv::Mat& img, const std::vector<Armor> & armors)
 {
   cv::Mat tmp_img = img.clone();
 

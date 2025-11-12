@@ -17,7 +17,10 @@
 #include <auto_aim_interfaces/msg/debug_lights.hpp>
 
 // STD
-// Minimal includes for this header file
+// Standard Library Includes
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "pnp_solver.hpp"
 #include "yolo.hpp"

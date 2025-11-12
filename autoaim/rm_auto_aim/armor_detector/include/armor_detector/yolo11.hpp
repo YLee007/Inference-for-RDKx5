@@ -5,8 +5,9 @@
 #include <list>
 #include <string>
 #include <vector>
-#include <memory>
+#include <cstdint> // For uint8_t
 #include <functional>
+#include <memory>
 
 // OpenCV 头文件
 #include <opencv2/opencv.hpp>
@@ -37,19 +38,19 @@ public:
   ~YOLO11() override;
 
   // 同步推理接口（参数、返回值完全匹配 cpp）
-  std::list<Armor> infer(const uint8_t* nv12_img_data, int img_width, int img_height,
+  std::list<Armor> infer(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                          int alloctask_timeout_ms = 1000, int infer_timeout_ms = 2000);
 
   // 异步推理接口（参数、返回值完全匹配 cpp）
-  int infer_async(const uint8_t* nv12_img_data, int img_width, int img_height,
+  int infer_async(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                   InferCallback callback, int alloctask_timeout_ms = 1000, int infer_timeout_ms = 2000);
 
   // 基类纯虚接口实现（参数、返回值匹配 cpp）
-  std::list<Armor> detect(const std::shared_ptr<hobot::cv::Image> & hobot_img, int frame_count) override;
+  std::vector<Armor> detect(const std::shared_ptr<hobot::cv::Image> & hobot_img, int frame_count) override;
 
 private:
   // 预处理：NV12 转 dnn_node 输入
-  bool preprocess(const uint8_t* nv12_img_data, int img_width, int img_height,
+  bool preprocess(const std::uint8_t* nv12_img_data, int img_width, int img_height,
                   std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>& dnn_inputs);
 
   // 后处理回调：适配 dnn_node 格式
@@ -57,7 +58,7 @@ private:
                    InferCallback callback = nullptr);
 
   // 解析输出张量：转 Armor 列表
-  std::list<Armor> parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output);
+  std::vector<Armor> parse_output(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput>& output);
 
   // 装甲板类型判断
   ArmorType get_type(const Armor & armor);

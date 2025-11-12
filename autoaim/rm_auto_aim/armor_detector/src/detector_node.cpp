@@ -15,6 +15,9 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // STD
+#include <chrono>
+#include <functional>
+#include <iomanip>
 #include <memory>
 #include <string>
 #include <vector>
@@ -229,8 +232,7 @@ void ArmorDetectorNode::createDebugPublishers()
 {
   result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
   binary_img_pub_ = image_transport::create_publisher(this, "/detector/binary_img");
-  // lights_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugLights>(
-  //   "/detector/debug_lights", rclcpp::SensorDataQoS());
+  // The lights_data_pub_ is removed since light bar detection is replaced by YOLO11
   armors_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugArmors>(
     "/detector/debug_armors", rclcpp::SensorDataQoS());
   number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");

@@ -34,7 +34,7 @@ enum class ArmorName {
   R5,
   R7
 };
-const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
+extern const std::vector<std::string> ARMOR_TYPE_STR;
 
 struct Armor
 {
@@ -55,7 +55,9 @@ struct Armor
   float confidence;
   std::string classfication_result;
 
-  Armor(ArmorName class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints);
+  Armor(ArmorName class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints, const cv::Point2f & center)
+  : name(class_id), center(center), bbox(bbox), class_id(class_id), armor_keypoints(armor_keypoints),
+    confidence(confidence) {}
 };
 
 
