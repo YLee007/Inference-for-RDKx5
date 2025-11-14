@@ -27,9 +27,9 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
     : hobot::dnn_node::DnnNode(node_name, options) {
   using std::placeholders::_1;
 
-  this->declare_parameter<std::string>("hbmem_img_topic", "/hbmem_img");
-  std::string hbmem_topic;
-  this->get_parameter("hbmem_img_topic", hbmem_topic);
+  this->declare_parameter<std::string>("image_topic", "/image_raw");
+  std::string image_topic;
+  this->get_parameter("image_topic", image_topic);
 
   if (Init() != 0) {
     throw std::runtime_error("Yolo11Node init failed");
@@ -44,11 +44,11 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
                 model_input_width_, model_input_height_);
   }
 
-  img_subscription_ = this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
-      hbmem_topic, rclcpp::SensorDataQoS(),
+  img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+      image_topic, rclcpp::SensorDataQoS(),
       std::bind(&Yolo11Node::FeedImg, this, _1));
-  RCLCPP_INFO(this->get_logger(), "Subscribed hbmem topic: %s",
-              hbmem_topic.c_str());
+  RCLCPP_INFO(this->get_logger(), "Subscribed image topic: %s",
+              image_topic.c_str());
 }
 
 int Yolo11Node::PostProcess(
@@ -244,7 +244,7 @@ int Yolo11Node::SetNodePara() {
 }
 
 void Yolo11Node::FeedImg(
-    const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr img_msg) {
+    const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
   if (!rclcpp::ok() || !img_msg) {
     
     return;
@@ -252,8 +252,8 @@ void Yolo11Node::FeedImg(
 
   auto dnn_output = std::make_shared<DnnOutput>();
   dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
-  dnn_output->msg_header->set__frame_id(std::to_string(img_msg->index));
-  dnn_output->msg_header->set__stamp(img_msg->time_stamp);
+  dnn_output->msg_header->set__frame_id(img_msg->header.frame_id);
+  dnn_output->msg_header->set__stamp(img_msg->header.stamp);
 
   // Fill metadata
   dnn_output->img_w = img_msg->width;

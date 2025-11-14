@@ -7,10 +7,10 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
-#include "hbm_img_msgs/msg/hbm_msg1080_p.hpp"
 
 #include "dnn_node/dnn_node.h"
 #include "armor_detector/armors_shared.hpp"
+#include <sensor_msgs/msg/image.hpp>
 
 namespace rm_auto_aim {
 
@@ -49,9 +49,8 @@ class Yolo11Node : public hobot::dnn_node::DnnNode {
   int model_input_height_ = -1;
 
   // 图片订阅
-  rclcpp::Subscription<hbm_img_msgs::msg::HbmMsg1080P>::ConstSharedPtr
-      img_subscription_ = nullptr;
-  void FeedImg(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr msg);
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
+  void FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
 };
 
 }  // namespace rm_auto_aim
