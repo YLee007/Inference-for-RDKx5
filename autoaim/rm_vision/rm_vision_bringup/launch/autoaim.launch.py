@@ -4,6 +4,13 @@ from ament_index_python.packages import get_package_share_directory
 from launch.actions import ExecuteProcess  
 sys.path.append(os.path.join(get_package_share_directory('rm_vision_bringup'), 'launch'))
 
+def _resolve_yolo_config():
+    # Resolve a repo-relative path to an absolute path using this package's share dir
+    pkg_share = get_package_share_directory('rm_vision_bringup')
+    # pkg_share is typically <repo>/autoaim/rm_vision/rm_vision_bringup
+    candidate = os.path.abspath(os.path.join(pkg_share, '..', '..', 'model', 'yolov11workconfig.json'))
+    return candidate
+
 
 def generate_launch_description():
 
@@ -35,6 +42,15 @@ def generate_launch_description():
                     plugin='rm_auto_aim::ArmorDetectorNode',
                     name='armor_detector',
                     parameters=[node_params],
+                    extra_arguments=[{'use_intra_process_comms': True}]
+                )
+                ,
+                ComposableNode(
+                    package='armor_detector',
+                    plugin='rm_auto_aim::Yolo11Node',
+                    name='yolo11_node',
+                    # pass node_params but override config_file with an absolute path
+                    parameters=[node_params, {'config_file': _resolve_yolo_config()}],
                     extra_arguments=[{'use_intra_process_comms': True}]
                 )
             ],

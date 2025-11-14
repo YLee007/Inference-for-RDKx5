@@ -80,7 +80,8 @@
         "core": "cpp",
         "filesystem": "cpp",
         "queue": "cpp",
-        "climits": "cpp"
+        "climits": "cpp",
+        "*.tcc": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

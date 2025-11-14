@@ -20,6 +20,9 @@
     detect_color: 0
     binary_thres: 78
 
+    # YOLO parser config file (relative to repo root or absolute). Used by Yolo11Node when launched.
+    config_file: "autoaim/model/yolov11workconfig.json"
+
     light.min_ratio: 0.1
     armor.min_light_ratio: 0.8
 
@@ -57,6 +60,11 @@
       car_attack_threshold: 85.0
       outpost_attack_threshold: 5.0
       threshold_fix: 0.0
+
+
+  /yolo11_node:
+    ros__parameters:
+      config_file: "autoaim/model/yolov11workconfig.json"
 
 
 # /rm_auto_record:

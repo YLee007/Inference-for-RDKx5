@@ -20,11 +20,13 @@
 #include <iomanip>
 #include <memory>
 #include <string>
+#include <cctype>
 #include <vector>
 
 #include <image_transport/image_transport.hpp>
 #include "armor_detector/armor.hpp"
 #include "armor_detector/detector_node.hpp"
+#include "armor_detector/armors_shared.hpp"
 #include "auto_aim_interfaces/msg/debug_armors.hpp"
 #include "auto_aim_interfaces/msg/debug_lights.hpp"
 #include "geometry_msgs/msg/point.hpp"
@@ -120,7 +122,8 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 
   if (pnp_solver_ != nullptr && is_aim_task_) {
     armors_msg_.header = armor_marker_.header = text_marker_.header = img_msg->header;
-    armors_msg_.armors.clear();
+  armors_msg_.armors.clear();
+  armors_msg_.armors.reserve(armors.size());
     marker_array_.markers.clear();
     armor_marker_.id = 0;
     text_marker_.id = 0;
@@ -155,8 +158,9 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
         // Fill the distance to image center
         armor_msg.distance_to_image_center = pnp_solver_->calculateDistanceToCenter(armor.center);
 
-        // Fill keypoints
+        // Fill keypoints (reserve small fixed size to avoid reallocs)
         armor_msg.kpts.clear();
+        armor_msg.kpts.reserve(4);
         for (const auto & pt :
              {armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom,
               armor.right_light.top}) {
@@ -198,7 +202,98 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 
   auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
 
-  auto armors = yolo11_->detect(img,frame_count_);
+  // Prefer DNN-produced shared keypoints if available
+  std::vector<Armor> armors;
+  if (!rm_auto_aim::armors_keypoints.empty()) {
+    // Reserve to avoid repeated allocations (typical few elements)
+    armors.reserve(rm_auto_aim::armors_keypoints.size());
+
+    // Small helper to parse class name
+    auto ParseArmorName = [](const std::string &s) -> ArmorName {
+      if (s.empty()) return ArmorName::B1;
+      char color = 0;
+      int num = 0;
+      for (size_t i = 0; i < s.size(); ++i) {
+        char ch = std::toupper(static_cast<unsigned char>(s[i]));
+        if (ch == 'B' || ch == 'R') {
+          color = ch;
+          // parse following digits
+          std::string digits;
+          for (size_t j = i + 1; j < s.size(); ++j) {
+            if (std::isdigit(static_cast<unsigned char>(s[j]))) digits.push_back(s[j]);
+            else break;
+          }
+          if (!digits.empty()) num = std::stoi(digits);
+          break;
+        }
+      }
+      if (color == 0) return ArmorName::B1;
+      if (color == 'B') {
+        switch (num) {
+          case 1: return ArmorName::B1;
+          case 2: return ArmorName::B2;
+          case 3: return ArmorName::B3;
+          case 4: return ArmorName::B4;
+          case 5: return ArmorName::B5;
+          case 7: return ArmorName::B7;
+          default: return ArmorName::B1;
+        }
+      } else {
+        switch (num) {
+          case 1: return ArmorName::R1;
+          case 2: return ArmorName::R2;
+          case 3: return ArmorName::R3;
+          case 4: return ArmorName::R4;
+          case 5: return ArmorName::R5;
+          case 7: return ArmorName::R7;
+          default: return ArmorName::R1;
+        }
+      }
+    };
+
+    // Iterate by non-const reference so we can move keypoint vectors (avoid copies)
+    for (auto & det : rm_auto_aim::armors_keypoints) {
+      if (det.kpts.size() < 4) continue;
+
+      // If detection contains a timestamp, ensure it matches the image timestamp (tolerance)
+      if (det.stamp_sec != 0) {
+        rclcpp::Time det_ts(rclcpp::Time(det.stamp_sec, det.stamp_nanosec));
+        rclcpp::Time img_ts = img_msg->header.stamp;
+        double dt = std::abs((img_ts - det_ts).seconds());
+        if (dt > 0.2) { // 200 ms tolerance
+          RCLCPP_DEBUG(this->get_logger(), "Skipping detection: timestamp mismatch (dt=%.3f s)", dt);
+          continue;
+        }
+      }
+
+      cv::Rect bbox = cv::boundingRect(det.kpts);
+      cv::Point2f center(bbox.x + bbox.width / 2.0f, bbox.y + bbox.height / 2.0f);
+
+      ArmorName parsed_name = ParseArmorName(det.class_name);
+      // Mapping rule: B1 and R1 are LARGE, others are SMALL
+      ArmorType atype = (parsed_name == ArmorName::B1 || parsed_name == ArmorName::R1) ? ArmorType::LARGE : ArmorType::SMALL;
+
+      // Move keypoints into Armor to avoid copying vectors
+      armors.emplace_back(parsed_name, det.score, bbox, std::move(det.kpts), center);
+      Armor & armor = armors.back();
+      armor.type = atype;
+      // Keep full class string for UI (e.g. "B1", "R3")
+      armor.classification_result = det.class_name;
+      // For serial/communication we use team_id: 0 for blue (B), 1 for red (R), -1 unknown
+      int team_id = -1;
+      for (char c : det.class_name) {
+        char cu = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        if (cu == 'B') { team_id = 0; break; }
+        if (cu == 'R') { team_id = 1; break; }
+      }
+      armor.team_id = team_id;
+    }
+    // clear the shared buffer so next frame can write new detections
+    rm_auto_aim::armors_keypoints.clear();
+  } else {
+    // fallback to classic detector
+    armors = yolo11_->detect(img, frame_count_);
+  }
 
   auto final_time = this->now();
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;
@@ -231,8 +326,6 @@ void ArmorDetectorNode::destroyDebugPublishers()
 void ArmorDetectorNode::createDebugPublishers()
 {
   result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
-  binary_img_pub_ = image_transport::create_publisher(this, "/detector/binary_img");
-  // The lights_data_pub_ is removed since light bar detection is replaced by YOLO11
   armors_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugArmors>(
     "/detector/debug_armors", rclcpp::SensorDataQoS());
   number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");

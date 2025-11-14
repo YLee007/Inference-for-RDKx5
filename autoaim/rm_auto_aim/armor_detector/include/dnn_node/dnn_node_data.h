@@ -125,8 +125,6 @@ struct DnnNodeOutput {
   // 在前处理中使用订阅到的图片消息的header填充
   std::shared_ptr<std_msgs::msg::Header> msg_header = nullptr;
 
-  // 模型输出的tensor数据指针列表，维度等于模型输出branch数
-  // 推理完成后，用户可以直接解析output_tensors并使用解析后的结构化数据
   std::vector<std::shared_ptr<DNNTensor>> output_tensors;
 
   // 运行时时间统计指针，用于管理模型推理时间

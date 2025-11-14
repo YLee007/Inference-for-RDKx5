@@ -50,10 +50,10 @@ struct Armor
   std::vector<cv::Point2f> armor_keypoints;
   cv::Point2f offset_;
 
-  // Number part
-  std::string number;
   float confidence;
-  std::string classfication_result;
+  std::string classification_result;
+  // team id for serial comms: 0 = blue, 1 = red, -1 = unknown
+  int team_id = -1;
 
   Armor(ArmorName class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints, const cv::Point2f & center)
   : name(class_id), center(center), bbox(bbox), class_id(class_id), armor_keypoints(armor_keypoints),
