@@ -62,7 +62,7 @@ private:
   // Image subscription
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
 
-  std::unique_ptr<YOLO11> yolo11_;
+  std::unique_ptr<Yolo11Node> yolo11_;
   bool debug_;
   int frame_count_ = 0;
   rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;

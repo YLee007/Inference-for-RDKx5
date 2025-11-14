@@ -45,7 +45,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   // Create detector
   std::string package_share_directory = ament_index_cpp::get_package_share_directory("armor_detector");
   std::string config_path = package_share_directory + "/config/yolo11.json";
-  yolo11_ = std::make_unique<YOLO11>(config_path, debug_);
+  yolo11_ = std::make_unique<Yolo11Node>(config_path, debug_);
 
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
