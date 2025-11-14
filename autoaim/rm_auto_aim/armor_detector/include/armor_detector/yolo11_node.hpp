@@ -37,6 +37,9 @@ class Yolo11Node : public hobot::dnn_node::DnnNode {
  public:
   Yolo11Node(const std::string &node_name = "yolo11_node",
              const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+  
+  // 为组件支持添加的构造函数
+  explicit Yolo11Node(const rclcpp::NodeOptions &options);
 
  protected:
   int SetNodePara() override;

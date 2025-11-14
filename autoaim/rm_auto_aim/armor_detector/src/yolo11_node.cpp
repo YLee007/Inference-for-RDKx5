@@ -22,6 +22,9 @@
 
 namespace rm_auto_aim {
 
+Yolo11Node::Yolo11Node(const rclcpp::NodeOptions &options)
+    : Yolo11Node("yolo11_node", options) {}
+
 Yolo11Node::Yolo11Node(const std::string &node_name,
                        const rclcpp::NodeOptions &options)
     : hobot::dnn_node::DnnNode(node_name, options) {
