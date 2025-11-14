@@ -2,7 +2,10 @@
 #include "armor_detector/armors_shared.hpp"
 #include <opencv2/core.hpp>
 
+#include <algorithm>
+#include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -17,138 +20,115 @@
 #include "hobot_cv/hobotcv_imgproc.h"
 #include "rclcpp_components/register_node_macro.hpp"
 
-  rm_auto_aim::armors_keypoints.clear();
+namespace rm_auto_aim {
 
-  std::shared_ptr<hobot::dnn_node::output_parser::DnnParserResult> det_result = nullptr;
-  if (hobot::dnn_node::parser_yolov8::Parse(node_output, det_result) < 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Parse YOLOv8 output fail!");
+Yolo11Node::Yolo11Node(const std::string &node_name,
+                       const rclcpp::NodeOptions &options)
+    : hobot::dnn_node::DnnNode(node_name, options) {
+  using std::placeholders::_1;
+
+  this->declare_parameter<std::string>("hbmem_img_topic", "/hbmem_img");
+  std::string hbmem_topic;
+  this->get_parameter("hbmem_img_topic", hbmem_topic);
+
+  if (Init() != 0) {
+    throw std::runtime_error("Yolo11Node init failed");
+  }
+
+  if (GetModelInputSize(0, model_input_width_, model_input_height_) != 0) {
+    RCLCPP_WARN(this->get_logger(),
+                "GetModelInputSize failed, using defaults %dx%d",
+                model_input_width_, model_input_height_);
+  } else {
+    RCLCPP_INFO(this->get_logger(), "Model input size %dx%d",
+                model_input_width_, model_input_height_);
+  }
+
+  img_subscription_ = this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
+      hbmem_topic, rclcpp::SensorDataQoS(),
+      std::bind(&Yolo11Node::FeedImg, this, _1));
+  RCLCPP_INFO(this->get_logger(), "Subscribed hbmem topic: %s",
+              hbmem_topic.c_str());
+}
+
+int Yolo11Node::PostProcess(
+    const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output) {
+  if (!rclcpp::ok() || !node_output) {
+    RCLCPP_WARN(this->get_logger(), "Invalid node_output in PostProcess");
     return -1;
   }
 
-  // Extract optional preprocessing metadata from node_output so we can map coords back
-  auto parser_output = std::dynamic_pointer_cast<DnnOutput>(node_output);
-  float out_ratio = 1.0f;
-  int out_img_w = 0, out_img_h = 0;
-  if (parser_output) {
-    out_ratio = parser_output->ratio;
-    out_img_w = parser_output->img_w;
-    out_img_h = parser_output->img_h;
+  rm_auto_aim::armors_keypoints.clear();
+
+  std::shared_ptr<hobot::dnn_node::output_parser::DnnParserResult> det_result =
+      nullptr;
+  if (hobot::dnn_node::parser_yolov8::Parse(node_output, det_result) < 0 ||
+      !det_result) {
+    RCLCPP_ERROR(this->get_logger(), "Parse YOLOv8 output failed");
+    return -1;
   }
 
-  auto &perception = det_result->perception;
-  for (const auto &det : perception.det) {
-    std::vector<cv::Point2f> kps(4);
-    // bbox: xmin, ymin, xmax, ymax
-    kps[0] = cv::Point2f(det.bbox.xmin, det.bbox.ymin);  // top-left
-    kps[1] = cv::Point2f(det.bbox.xmax, det.bbox.ymin);  // top-right
-    kps[2] = cv::Point2f(det.bbox.xmax, det.bbox.ymax);  // bottom-right
-    kps[3] = cv::Point2f(det.bbox.xmin, det.bbox.ymax);  // bottom-left
-
-    // If preprocessing applied a resize (hobotcv), map coordinates back to original image by scaling
-    if (out_ratio != 1.0f) {
-      for (auto &pt : kps) {
-        pt.x *= out_ratio;
-        pt.y *= out_ratio;
-        // bounds checking if original image size available
-        if (out_img_w > 0) {
-          if (pt.x < 0) pt.x = 0;
-          if (pt.x >= out_img_w) pt.x = out_img_w - 1;
-        }
-        if (out_img_h > 0) {
-          if (pt.y < 0) pt.y = 0;
-          if (pt.y >= out_img_h) pt.y = out_img_h - 1;
-        }
-      }
+  auto parser_output = std::dynamic_pointer_cast<DnnOutput>(node_output);
+  float ratio = 1.0f;
+  int original_w = model_input_width_;
+  int original_h = model_input_height_;
+  if (parser_output) {
+    if (parser_output->ratio > 0.0f) {
+      ratio = parser_output->ratio;
     }
+    if (parser_output->img_w > 0) {
+      original_w = parser_output->img_w;
+    }
+    if (parser_output->img_h > 0) {
+      original_h = parser_output->img_h;
+    }
+  }
+
+  const auto scale_x = [&](float value) {
+    float scaled = value * ratio;
+    if (original_w > 0) {
+      scaled = std::clamp(scaled, 0.0f,
+                          static_cast<float>(original_w - 1));
+    }
+    return scaled;
+  };
+  const auto scale_y = [&](float value) {
+    float scaled = value * ratio;
+    if (original_h > 0) {
+      scaled = std::clamp(scaled, 0.0f,
+                          static_cast<float>(original_h - 1));
+    }
+    return scaled;
+  };
+
+  for (const auto &det : det_result->perception.det) {
+    const float xmin = scale_x(det.bbox.xmin);
+    const float ymin = scale_y(det.bbox.ymin);
+    const float xmax = scale_x(det.bbox.xmax);
+    const float ymax = scale_y(det.bbox.ymax);
+
+    std::vector<cv::Point2f> kps{
+        {xmin, ymin},
+        {xmax, ymin},
+        {xmax, ymax},
+        {xmin, ymax},
+    };
 
     rm_auto_aim::ArmorDetection det_out;
     det_out.kpts = std::move(kps);
-    det_out.class_name = det.class_name;
+    det_out.class_name = det.class_name ? det.class_name : "";
     det_out.score = det.score;
-    // attach message header if available
     if (parser_output && parser_output->msg_header) {
       det_out.frame_id = parser_output->msg_header->frame_id;
       det_out.stamp_sec = parser_output->msg_header->stamp.sec;
       det_out.stamp_nanosec = parser_output->msg_header->stamp.nanosec;
     }
     rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
-
-    RCLCPP_DEBUG(rclcpp::get_logger("yolo11_node"),
-                 "Parsed detection score=%.3f, bbox=(%.1f,%.1f)-(%.1f,%.1f)",
-                 det.score, det.bbox.xmin, det.bbox.ymin, det.bbox.xmax, det.bbox.ymax);
-  }
-  if (!node_output->output_tensors.empty()) {
-    auto output_tensor = node_output->output_tensors[0];
-    if (output_tensor && output_tensor->data && output_tensor->shape.dim.size() >= 3) {
-      int batch = output_tensor->shape.dim[0];
-      int num_boxes = output_tensor->shape.dim[1];
-      int out_dim = output_tensor->shape.dim[2];
-      float *data = static_cast<float *>(output_tensor->data);
-      // expect at least 4 + 1 + 8
-      if (out_dim >= 13 && num_boxes > 0) {
-        parsed_from_tensor = true;
-        // infer class_num from layout
-        int class_num = out_dim - 4 - 8;
-        for (int i = 0; i < num_boxes; ++i) {
-          float *box = data + i * out_dim;
-          float x = box[0], y = box[1], w = box[2], h = box[3];
-          float *scores = box + 4;
-          // pick max class score
-          float max_score = 0.0f;
-          for (int c = 0; c < class_num; ++c) {
-            if (scores[c] > max_score) max_score = scores[c];
-          }
-          if (max_score <= 0.0f) continue;
-          float *kpts = box + 4 + class_num;
-          std::vector<cv::Point2f> pts(4);
-          for (int kp = 0; kp < 4; ++kp) {
-            pts[kp] = cv::Point2f(kpts[kp * 2], kpts[kp * 2 + 1]);
-          }
-          rm_auto_aim::ArmorDetection det_out;
-          det_out.kpts = std::move(pts);
-          det_out.class_name = "";  // unknown from raw tensor parse
-          det_out.score = max_score;
-          if (parser_output && parser_output->msg_header) {
-            det_out.frame_id = parser_output->msg_header->frame_id;
-            det_out.stamp_sec = parser_output->msg_header->stamp.sec;
-            det_out.stamp_nanosec = parser_output->msg_header->stamp.nanosec;
-          }
-          rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
-        }
-        if (!rm_auto_aim::armors_keypoints.empty()) {
-          RCLCPP_INFO(rclcpp::get_logger("yolo11_node"), "Parsed %zu detections from raw tensor", rm_auto_aim::armors_keypoints.size());
-        }
-      }
-    }
   }
 
-  if (!parsed_from_tensor) {
-    auto &perception = det_result->perception;
-    for (const auto &det : perception.det) {
-      // bbox 格式: xmin, ymin, xmax, ymax
-      std::vector<cv::Point2f> kps(4);
-      kps[0] = cv::Point2f(det.bbox.xmin, det.bbox.ymax);  // bottom-left
-      kps[1] = cv::Point2f(det.bbox.xmin, det.bbox.ymin);  // top-left
-      kps[2] = cv::Point2f(det.bbox.xmax, det.bbox.ymin);  // top-right
-      kps[3] = cv::Point2f(det.bbox.xmax, det.bbox.ymax);  // bottom-right
-
-      rm_auto_aim::ArmorDetection det_out;
-      det_out.kpts = std::move(kps);
-      det_out.class_name = det.class_name;
-      det_out.score = det.score;
-      if (parser_output && parser_output->msg_header) {
-        det_out.frame_id = parser_output->msg_header->frame_id;
-        det_out.stamp_sec = parser_output->msg_header->stamp.sec;
-        det_out.stamp_nanosec = parser_output->msg_header->stamp.nanosec;
-      }
-      rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
-
-      RCLCPP_INFO(rclcpp::get_logger("yolo11_node"),
-                  "Parsed detection score=%.3f, bbox=(%.1f,%.1f)-(%.1f,%.1f)",
-                  det.score, det.bbox.xmin, det.bbox.ymin, det.bbox.xmax, det.bbox.ymax);
-    }
-  }
-
+  RCLCPP_DEBUG(this->get_logger(),
+               "PostProcess produced %zu detections",
+               rm_auto_aim::armors_keypoints.size());
   return 0;
 }
 
