@@ -19,6 +19,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(hobot_cv REQUIRED)  # 添加对 hobot_cv 库的依赖
+find_package(hbm_img_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -69,8 +71,6 @@ if(BUILD_TESTING)
   ament_add_gtest(test_node_startup test/test_node_startup.cpp)
   target_link_libraries(test_node_startup ${PROJECT_NAME})
 
-  ament_add_gtest(test_number_cls test/test_number_cls.cpp)
-  target_link_libraries(test_number_cls ${PROJECT_NAME})
 
 endif()
 

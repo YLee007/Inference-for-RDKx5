@@ -39,6 +39,7 @@ extern const std::vector<std::string> ARMOR_TYPE_STR;
 struct Armor
 {
   ArmorName name;
+  std::string number;
 
   cv::Point2f center;       // 不是对角线交点，不能作为实际中心！
   cv::Point2f center_norm;

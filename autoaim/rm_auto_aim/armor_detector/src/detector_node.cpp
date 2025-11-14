@@ -42,11 +42,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
-  // Create detector
-  std::string package_share_directory = ament_index_cpp::get_package_share_directory("armor_detector");
-  std::string config_path = package_share_directory + "/config/yolo11.json";
-  yolo11_ = std::make_unique<Yolo11Node>(config_path, debug_);
-
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
     "/detector/armors", rclcpp::SensorDataQoS());
@@ -135,7 +130,7 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
       if (success) {
         // Fill basic info
         armor_msg.type = ARMOR_TYPE_STR[static_cast<int>(armor.type)];
-        armor_msg.number = armor.number;
+        armor_msg.number = armor.classification_result;
 
         // Fill pose
         armor_msg.pose.position.x = tvec.at<double>(0);
@@ -160,10 +155,8 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 
         // Fill keypoints (reserve small fixed size to avoid reallocs)
         armor_msg.kpts.clear();
-        armor_msg.kpts.reserve(4);
-        for (const auto & pt :
-             {armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom,
-              armor.right_light.top}) {
+        armor_msg.kpts.reserve(armor.armor_keypoints.size());
+        for (const auto & pt : armor.armor_keypoints) {
           geometry_msgs::msg::Point point;
           point.x = pt.x;
           point.y = pt.y;
@@ -290,9 +283,6 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     }
     // clear the shared buffer so next frame can write new detections
     rm_auto_aim::armors_keypoints.clear();
-  } else {
-    // fallback to classic detector
-    armors = yolo11_->detect(img, frame_count_);
   }
 
   auto final_time = this->now();
@@ -300,7 +290,6 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   RCLCPP_DEBUG_STREAM(this->get_logger(), "Latency: " << latency << "ms");
 
   if (debug_) {
-    // Debug visualization is handled within YOLO11::detect if debug_ is true
     // Draw camera center
     cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
     // Draw latency
@@ -317,10 +306,9 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 
 void ArmorDetectorNode::destroyDebugPublishers()
 {
-  binary_img_pub_.reset();
   armors_data_pub_.reset();
-  number_img_pub_.reset();
-  result_img_pub_.reset();
+  number_img_pub_.shutdown();
+  result_img_pub_.shutdown();
 }
 
 void ArmorDetectorNode::createDebugPublishers()

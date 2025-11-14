@@ -6,7 +6,7 @@
 #include <image_transport/image_transport.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/CameraInfo.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "pnp_solver.hpp"
-#include "yolo.hpp"
 
 namespace rm_auto_aim
 {
@@ -62,11 +61,9 @@ private:
   // Image subscription
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
 
-  std::unique_ptr<Yolo11Node> yolo11_;
   bool debug_;
   int frame_count_ = 0;
   rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
-  image_transport::Publisher binary_img_pub_;
   image_transport::Publisher number_img_pub_;
   image_transport::Publisher result_img_pub_;
 

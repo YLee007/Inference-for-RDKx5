@@ -246,6 +246,7 @@ int Yolo11Node::SetNodePara() {
 void Yolo11Node::FeedImg(
     const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr img_msg) {
   if (!rclcpp::ok() || !img_msg) {
+    
     return;
   }
 
