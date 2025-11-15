@@ -2,6 +2,6 @@
   ros__parameters:
     camera_name: narrow_stereo
 
-    exposure_time: 6000
+    exposure_time: 3000
     gain: 32.0
-    use_shared_memory: true
+    use_shared_memory: false

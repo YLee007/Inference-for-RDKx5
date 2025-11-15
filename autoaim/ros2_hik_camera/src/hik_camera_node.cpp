@@ -48,14 +48,18 @@ public:
 
     bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", true);
     auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
-    camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
+    
 
 #ifdef SHARED_MEM_ENABLED
-    bool use_shared_mem = this->declare_parameter("use_shared_memory", true);
-    if (use_shared_mem) {
+    use_shared_mem_ = this->declare_parameter("use_shared_memory", true);
+    if (use_shared_mem_) {
       sharedmem_pub_ = this->create_publisher<hbm_img_msgs::msg::HbmMsg1080P>(
         "/hbmem_img", 10);
       RCLCPP_INFO(this->get_logger(), "Publishing using shared memory");
+    }
+    else{
+      camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
+      RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic");
     }
 #endif
 
@@ -108,7 +112,7 @@ public:
           camera_info_msg_.header = image_msg_.header;
 
 #ifdef SHARED_MEM_ENABLED
-          if (sharedmem_pub_ && sharedmem_pub_->get_subscription_count() > 0) {
+          if (sharedmem_pub_ && use_shared_mem_) {
             auto shared_msg = std::make_unique<hbm_img_msgs::msg::HbmMsg1080P>();
             
             shared_msg->time_stamp = this->get_clock()->now();
@@ -252,6 +256,7 @@ private:
 
 #ifdef SHARED_MEM_ENABLED
   rclcpp::Publisher<hbm_img_msgs::msg::HbmMsg1080P>::SharedPtr sharedmem_pub_;
+  bool use_shared_mem_ = false;
 #endif
 };
 }  // namespace hik_camera
