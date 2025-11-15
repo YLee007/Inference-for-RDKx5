@@ -16,11 +16,24 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ## Find dependencies ##
 #######################
 
+include_directories(
+        ${SYS_ROOT}/usr/include
+        ${SYS_ROOT}/usr/include/hobot/
+	      ${SYS_ROOT}/usr/hobot/include/
+        ${SYS_ROOT}/usr/include/opencv/
+)
+
+link_directories(
+  ${SYS_ROOT}/usr/lib/hbbpu/
+  ${SYS_ROOT}/usr/lib/
+  ${SYS_ROOT}/usr/hobot/lib/
+)
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(hobot_cv REQUIRED)  # 添加对 hobot_cv 库的依赖
 find_package(hbm_img_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(dnn_node REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -32,6 +45,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   DIRECTORY src
 )
 
+
 # 添加对 hobot_cv 的支持
 target_include_directories(${PROJECT_NAME} PUBLIC 
   ${OpenCV_INCLUDE_DIRS}
@@ -41,6 +55,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} 
   ${OpenCV_LIBS}
   ${hobot_cv_LIBRARIES}  
+  dnn_node::dnn_node
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}

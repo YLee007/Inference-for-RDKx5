@@ -34,7 +34,7 @@ enum class ArmorName {
   R5,
   R7
 };
-extern const std::vector<std::string> ARMOR_TYPE_STR;
+const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
 
 struct Armor
 {

@@ -249,7 +249,7 @@ int Yolo11Node::SetNodePara() {
 void Yolo11Node::FeedImg(
     const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
   if (!rclcpp::ok() || !img_msg) {
-    
+    RCLCPP_DEBUG(this->get_logger(), "Get img failed");
     return;
   }
 

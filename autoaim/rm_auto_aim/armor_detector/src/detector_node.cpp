@@ -117,8 +117,8 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 
   if (pnp_solver_ != nullptr && is_aim_task_) {
     armors_msg_.header = armor_marker_.header = text_marker_.header = img_msg->header;
-  armors_msg_.armors.clear();
-  armors_msg_.armors.reserve(armors.size());
+    armors_msg_.armors.clear();
+    armors_msg_.armors.reserve(armors.size());
     marker_array_.markers.clear();
     armor_marker_.id = 0;
     text_marker_.id = 0;
@@ -317,6 +317,14 @@ void ArmorDetectorNode::createDebugPublishers()
   armors_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugArmors>(
     "/detector/debug_armors", rclcpp::SensorDataQoS());
   number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");
+}
+
+void ArmorDetectorNode::publishMarkers()
+{
+  using Marker = visualization_msgs::msg::Marker;
+  armor_marker_.action = armors_msg_.armors.empty() ? Marker::DELETE : Marker::ADD;
+  marker_array_.markers.emplace_back(armor_marker_);
+  marker_pub_->publish(marker_array_);
 }
 
 }  // namespace rm_auto_aim
