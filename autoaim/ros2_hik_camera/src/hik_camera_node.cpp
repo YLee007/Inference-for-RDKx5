@@ -48,19 +48,25 @@ public:
 
     bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", true);
     auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
-    
 
 #ifdef SHARED_MEM_ENABLED
-    use_shared_mem_ = this->declare_parameter("use_shared_memory", true);
+    use_shared_mem_ = this->declare_parameter("use_shared_memory", false);
     if (use_shared_mem_) {
+      // 创建共享内存发布器和独立的相机信息发布器
       sharedmem_pub_ = this->create_publisher<hbm_img_msgs::msg::HbmMsg1080P>(
         "/hbmem_img", 10);
-      RCLCPP_INFO(this->get_logger(), "Publishing using shared memory");
-    }
-    else{
+      camera_info_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(
+          "camera_info", rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos)));
+      RCLCPP_INFO(this->get_logger(), "Publishing using shared memory only");
+    } else {
+      // 只创建常规图像发布器（包含图像和相机信息）
       camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
-      RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic");
+      RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic only");
     }
+#else
+    // 编译时未启用共享内存，只创建常规发布器
+    camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
+    RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic (shared memory disabled)");
 #endif
 
     declareParameters();
@@ -113,6 +119,7 @@ public:
 
 #ifdef SHARED_MEM_ENABLED
           if (sharedmem_pub_ && use_shared_mem_) {
+            // 发布共享内存图像
             auto shared_msg = std::make_unique<hbm_img_msgs::msg::HbmMsg1080P>();
             
             shared_msg->time_stamp = this->get_clock()->now();
@@ -145,8 +152,13 @@ public:
                        copy_size, shared_msg->data.begin());
             
             sharedmem_pub_->publish(std::move(shared_msg));
+            
+            // 同时发布相机信息（重要！）
+            camera_info_msg_.header.stamp = this->now();
+            camera_info_pub_->publish(camera_info_msg_);
           } 
           else {
+            // 发布常规图像和相机信息
             camera_pub_.publish(image_msg_, camera_info_msg_);
           }
 #else
@@ -256,6 +268,7 @@ private:
 
 #ifdef SHARED_MEM_ENABLED
   rclcpp::Publisher<hbm_img_msgs::msg::HbmMsg1080P>::SharedPtr sharedmem_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub_;
   bool use_shared_mem_ = false;
 #endif
 };

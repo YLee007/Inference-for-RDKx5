@@ -87,8 +87,14 @@ int Yolo11Node::PostProcess(
     }
   }
 
+  // 计算 letterbox 偏移量
+  float scale_factor = 1.0f / ratio;  // letterbox 的实际缩放因子
+  float x_offset = (model_input_width_ - original_w * scale_factor) / 2.0f;
+  float y_offset = (model_input_height_ - original_h * scale_factor) / 2.0f;
+
   const auto scale_x = [&](float value) {
-    float scaled = value * ratio;
+    // letterbox 坐标映射：先减去偏移，再缩放到原图
+    float scaled = (value - x_offset) * ratio;
     if (original_w > 0) {
       scaled = std::clamp(scaled, 0.0f,
                           static_cast<float>(original_w - 1));
@@ -96,7 +102,8 @@ int Yolo11Node::PostProcess(
     return scaled;
   };
   const auto scale_y = [&](float value) {
-    float scaled = value * ratio;
+    // letterbox 坐标映射：先减去偏移，再缩放到原图
+    float scaled = (value - y_offset) * ratio;
     if (original_h > 0) {
       scaled = std::clamp(scaled, 0.0f,
                           static_cast<float>(original_h - 1));
@@ -129,9 +136,17 @@ int Yolo11Node::PostProcess(
     rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
   }
 
-  RCLCPP_DEBUG(this->get_logger(),
+  RCLCPP_INFO(this->get_logger(),
                "PostProcess produced %zu detections",
                rm_auto_aim::armors_keypoints.size());
+  
+  // 打印每个检测结果的详细信息
+  for (size_t i = 0; i < rm_auto_aim::armors_keypoints.size(); ++i) {
+    const auto& detection = rm_auto_aim::armors_keypoints[i];
+    RCLCPP_INFO(this->get_logger(),
+                "Detection %zu: class=%s, score=%.3f, keypoints=%zu",
+                i, detection.class_name.c_str(), detection.score, detection.kpts.size());
+  }
   return 0;
 }
 
@@ -254,21 +269,74 @@ void Yolo11Node::FeedImg(
   }
 
   auto dnn_output = std::make_shared<DnnOutput>();
-  dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
-  dnn_output->msg_header->set__frame_id(img_msg->header.frame_id);
-  dnn_output->msg_header->set__stamp(img_msg->header.stamp);
-
-  // Fill metadata
-  dnn_output->img_w = img_msg->width;
-  dnn_output->img_h = img_msg->height;
-  dnn_output->model_w = model_input_width_;
-  dnn_output->model_h = model_input_height_;
 
   std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
 
-  // 如果输入尺寸和模型输入不一致，先用 hobotcv 做等比例 resize（保留宽高比）
-  if (static_cast<int>(img_msg->height) != model_input_height_ ||
-      static_cast<int>(img_msg->width) != model_input_width_) {
+  // Letterbox resize 函数
+  auto letterbox_resize = [](const cv::Mat& img, int target_w, int target_h, 
+                            float& scale, int& x_offset, int& y_offset) -> cv::Mat {
+    int img_w = img.cols;
+    int img_h = img.rows;
+    
+    // 计算缩放比例（保持宽高比）
+    scale = std::min(static_cast<float>(target_w) / img_w, 
+                     static_cast<float>(target_h) / img_h);
+    
+    // 计算缩放后的尺寸
+    int new_w = static_cast<int>(img_w * scale);
+    int new_h = static_cast<int>(img_h * scale);
+    
+    // resize 图像
+    cv::Mat resized;
+    cv::resize(img, resized, cv::Size(new_w, new_h));
+    
+    // 创建目标尺寸的画布并填充灰色
+    cv::Mat letterbox_img(target_h, target_w, img.type(), cv::Scalar(114, 114, 114));
+    
+    // 计算居中位置
+    x_offset = (target_w - new_w) / 2;
+    y_offset = (target_h - new_h) / 2;
+    
+    // 将 resize 后的图像放到画布中心
+    resized.copyTo(letterbox_img(cv::Rect(x_offset, y_offset, new_w, new_h)));
+    
+    return letterbox_img;
+  };
+
+  // 根据图像编码格式选择处理方式
+  if (img_msg->encoding == "rgb8") {
+    // RGB8 格式处理：使用 letterbox resize
+    auto cv_img =
+        cv_bridge::cvtColorForDisplay(cv_bridge::toCvShare(img_msg), "bgr8");
+
+    // 应用 letterbox resize
+    float scale;
+    int x_offset, y_offset;
+    cv::Mat letterbox_img = letterbox_resize(cv_img->image, model_input_width_, model_input_height_,
+                                           scale, x_offset, y_offset);
+
+    // 设置输出参数
+    dnn_output->ratio = 1.0f / scale;  // 用于坐标映射的缩放比例
+    dnn_output->resized_w = model_input_width_;
+    dnn_output->resized_h = model_input_height_;
+    
+    // 记录 letterbox 偏移量（需要在 PostProcess 中使用）
+    dnn_output->img_w = cv_img->image.cols;  // 原图宽度
+    dnn_output->img_h = cv_img->image.rows;  // 原图高度
+
+    RCLCPP_DEBUG(this->get_logger(), 
+                 "Letterbox: input=%dx%d, model=%dx%d, scale=%.3f, offset=(%d,%d), ratio=%.3f",
+                 cv_img->image.cols, cv_img->image.rows,
+                 model_input_width_, model_input_height_,
+                 scale, x_offset, y_offset, dnn_output->ratio);
+
+    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromBGRImg(
+        letterbox_img, model_input_height_, model_input_width_);
+    
+  } else if (img_msg->encoding == "nv12") {
+    // NV12 格式处理：如果输入尺寸和模型输入不一致，先用 hobotcv 做等比例 resize（保留宽高比）
+    if (static_cast<int>(img_msg->height) != model_input_height_ ||
+        static_cast<int>(img_msg->width) != model_input_width_) {
     cv::Mat out_img;
     float ratio = 1.0f;
     int out_h = 0, out_w = 0;
@@ -301,17 +369,22 @@ void Yolo11Node::FeedImg(
     dnn_output->ratio = ratio;
     dnn_output->resized_w = out_img_width;
     dnn_output->resized_h = out_img_height;
+    } else {
+      // 直接构造 pyramid
+      pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
+          reinterpret_cast<const char *>(img_msg->data.data()),
+          img_msg->height,
+          img_msg->width,
+          model_input_height_,
+          model_input_width_);
+      dnn_output->ratio = 1.0f;
+      dnn_output->resized_w = img_msg->width;
+      dnn_output->resized_h = img_msg->height;
+    }
   } else {
-    // 直接构造 pyramid
-    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
-        reinterpret_cast<const char *>(img_msg->data.data()),
-        img_msg->height,
-        img_msg->width,
-        model_input_height_,
-        model_input_width_);
-    dnn_output->ratio = 1.0f;
-    dnn_output->resized_w = img_msg->width;
-    dnn_output->resized_h = img_msg->height;
+    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), 
+                 "Unsupported image encoding: %s", img_msg->encoding.c_str());
+    return;
   }
 
   if (!pyramid) {
@@ -319,14 +392,28 @@ void Yolo11Node::FeedImg(
     return;
   }
 
-  if (dnn_output->ratio != 1.0f) {
-    // optionally cache pyramid for rendering
-    dnn_output->pyramid = pyramid;
-  }
-
   auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>{pyramid};
 
-  if (Run(inputs, dnn_output, nullptr, false) < 0) {
+  //初始化输出
+  dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
+  dnn_output->msg_header->set__frame_id(img_msg->header.frame_id);
+  dnn_output->msg_header->set__stamp(img_msg->header.stamp);
+
+  // Fill metadata
+  dnn_output->img_w = img_msg->width;
+  dnn_output->img_h = img_msg->height;
+  dnn_output->model_w = model_input_width_;
+  dnn_output->model_h = model_input_height_;
+
+  // if (dnn_output->ratio != 1.0f) {
+  //   // optionally cache pyramid for rendering
+  //   dnn_output->pyramid = pyramid;
+  // }
+
+  
+
+  if (Run(inputs, dnn_output, nullptr, false) != 0
+      && Run(inputs, dnn_output, nullptr, false) != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Run inference fail!");
   }
 }

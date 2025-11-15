@@ -1,8 +1,16 @@
+/hik_camera:
+  ros__parameters:
+    camera_info_url: package://rm_vision_bringup/config/camera_info.yaml
+    exposure_time: 2000
+    gain: 5.0
+    use_shared_memory: false
+
 /camera_node:
   ros__parameters:
     camera_info_url: package://rm_vision_bringup/config/camera_info.yaml
     exposure_time: 2000
     gain: 5.0
+    use_shared_memory: false
 
 /serial_driver:
   ros__parameters:
@@ -16,7 +24,7 @@
 /armor_detector:
   ros__parameters:
     debug: ture
-
+    use_shared_memory: false
     detect_color: 0
     binary_thres: 78
 
@@ -62,9 +70,10 @@
       threshold_fix: 0.0
 
 
-  /yolo11_node:
-    ros__parameters:
-      config_file: "autoaim/model/yolov11workconfig.json"
+/yolo11_node:
+  ros__parameters:
+    config_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov11workconfig.json"
+    image_topic: "/image_raw"
 
 
 # /rm_auto_record:

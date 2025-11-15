@@ -85,7 +85,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/camer_info", rclcpp::SensorDataQoS(),
+    "/hik_camera/camera_info", rclcpp::SensorDataQoS(),
     [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camer_info) {
       cam_center_ = cv::Point2f(camer_info->k[2], camer_info->k[5]);
       cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camer_info);
@@ -93,9 +93,22 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       cam_info_sub_.reset();
     });
 
-  img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-    "/hbmem_img", rclcpp::SensorDataQoS(),
-    std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+  // 根据相机的共享内存设置决定订阅哪种图像话题
+  bool use_shared_memory = this->declare_parameter("use_shared_memory", false);
+  
+  if (use_shared_memory) {
+    // 订阅共享内存图像
+    hbmem_img_sub_ = this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
+      "/hbmem_img", rclcpp::SensorDataQoS(),
+      std::bind(&ArmorDetectorNode::hbmemImageCallback, this, std::placeholders::_1));
+    RCLCPP_INFO(this->get_logger(), "Subscribing to shared memory image: /hbmem_img");
+  } else {
+    // 订阅常规图像
+    regular_img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+      "/hik_camera/image_raw", rclcpp::SensorDataQoS(),
+      std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+    RCLCPP_INFO(this->get_logger(), "Subscribing to regular image: /hik_camera/image_raw");
+  }
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
@@ -107,6 +120,30 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
   } else {
     is_aim_task_ = false;
   }
+}
+
+void ArmorDetectorNode::hbmemImageCallback(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr hbmem_msg)
+{
+  // 将共享内存消息转换为标准图像消息
+  auto img_msg = std::make_shared<sensor_msgs::msg::Image>();
+  
+  // 设置图像基本信息
+  img_msg->header.stamp = hbmem_msg->time_stamp;
+  img_msg->header.frame_id = "camera_optical_frame";
+  img_msg->height = hbmem_msg->height;
+  img_msg->width = hbmem_msg->width;
+  img_msg->encoding = "nv12";  // 从共享内存消息的编码字段获取
+  img_msg->is_bigendian = false;
+  img_msg->step = hbmem_msg->step;
+  
+  // 复制图像数据
+  img_msg->data.resize(hbmem_msg->data_size);
+  std::copy(hbmem_msg->data.begin(), 
+            hbmem_msg->data.begin() + hbmem_msg->data_size, 
+            img_msg->data.begin());
+  
+  // 调用原来的图像处理函数
+  imageCallback(img_msg);
 }
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)

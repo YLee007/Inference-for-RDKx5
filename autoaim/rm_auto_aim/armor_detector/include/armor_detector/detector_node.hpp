@@ -15,6 +15,7 @@
 #include <auto_aim_interfaces/msg/armors.hpp>
 #include <auto_aim_interfaces/msg/debug_armors.hpp>
 #include <auto_aim_interfaces/msg/debug_lights.hpp>
+#include <hbm_img_msgs/msg/hbm_msg1080_p.hpp>
 
 // STD
 // Standard Library Includes
@@ -33,6 +34,7 @@ public:
 
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+  void hbmemImageCallback(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr hbmem_msg);
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   void publishMarkers();
@@ -58,8 +60,9 @@ private:
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  // Image subscription
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
+  // Image subscription (支持两种类型)
+  rclcpp::Subscription<hbm_img_msgs::msg::HbmMsg1080P>::SharedPtr hbmem_img_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr regular_img_sub_;
 
   bool debug_;
   int frame_count_ = 0;
