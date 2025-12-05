@@ -1,3 +1,6 @@
 [submodule "hobot_mipi_cam"]
 	path = hobot_mipi_cam
 	url = https://github.com/YLee007/hobot_mipi_cam.git
+[submodule "RobotDetectionModel"]
+	path = RobotDetectionModel
+	url = https://github.com/broalantaps/RobotDetectionModel.git
