@@ -238,49 +238,6 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     // Reserve to avoid repeated allocations (typical few elements)
     armors.reserve(rm_auto_aim::armors_keypoints.size());
 
-    // Small helper to parse class name
-    auto ParseArmorName = [](const std::string &s) -> ArmorName {
-      if (s.empty()) return ArmorName::B1;
-      char color = 0;
-      int num = 0;
-      for (size_t i = 0; i < s.size(); ++i) {
-        char ch = std::toupper(static_cast<unsigned char>(s[i]));
-        if (ch == 'B' || ch == 'R') {
-          color = ch;
-          // parse following digits
-          std::string digits;
-          for (size_t j = i + 1; j < s.size(); ++j) {
-            if (std::isdigit(static_cast<unsigned char>(s[j]))) digits.push_back(s[j]);
-            else break;
-          }
-          if (!digits.empty()) num = std::stoi(digits);
-          break;
-        }
-      }
-      if (color == 0) return ArmorName::B1;
-      if (color == 'B') {
-        switch (num) {
-          case 1: return ArmorName::B1;
-          case 2: return ArmorName::B2;
-          case 3: return ArmorName::B3;
-          case 4: return ArmorName::B4;
-          case 5: return ArmorName::B5;
-          case 7: return ArmorName::B7;
-          default: return ArmorName::B1;
-        }
-      } else {
-        switch (num) {
-          case 1: return ArmorName::R1;
-          case 2: return ArmorName::R2;
-          case 3: return ArmorName::R3;
-          case 4: return ArmorName::R4;
-          case 5: return ArmorName::R5;
-          case 7: return ArmorName::R7;
-          default: return ArmorName::R1;
-        }
-      }
-    };
-
     // Iterate by non-const reference so we can move keypoint vectors (avoid copies)
     for (auto & det : rm_auto_aim::armors_keypoints) {
       if (det.kpts.size() < 4) continue;
@@ -299,12 +256,20 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
       cv::Rect bbox = cv::boundingRect(det.kpts);
       cv::Point2f center(bbox.x + bbox.width / 2.0f, bbox.y + bbox.height / 2.0f);
 
-      ArmorName parsed_name = ParseArmorName(det.class_name);
-      // Mapping rule: B1 and R1 are LARGE, others are SMALL
-      ArmorType atype = (parsed_name == ArmorName::B1 || parsed_name == ArmorName::R1) ? ArmorType::LARGE : ArmorType::SMALL;
+      // 类型判定：Bb 为大装甲；数字类中含"1"(B1/R1)判为大装甲；其余判为小装甲
+      ArmorType atype = ArmorType::SMALL;
+      if (det.class_name == "Bb") {
+        atype = ArmorType::LARGE;
+      } else {
+        bool has_one_digit = false;
+        for (char c : det.class_name) {
+          if (std::isdigit(static_cast<unsigned char>(c)) && c == '1') { has_one_digit = true; break; }
+        }
+        if (has_one_digit) atype = ArmorType::LARGE;
+      }
 
       // Move keypoints into Armor to avoid copying vectors
-      armors.emplace_back(parsed_name, det.score, bbox, std::move(det.kpts), center);
+      armors.emplace_back(det.score, bbox, std::move(det.kpts), center);
       Armor & armor = armors.back();
       armor.type = atype;
       // Keep full class string for UI (e.g. "B1", "R3")

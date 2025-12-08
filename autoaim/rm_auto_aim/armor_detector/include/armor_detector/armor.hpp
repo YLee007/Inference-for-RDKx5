@@ -10,8 +10,6 @@
 // STL
 #include <algorithm>
 #include <string>
-#include <Eigen/Dense>
-#include <opencv2/opencv.hpp>
 #include <vector>
 
 namespace rm_auto_aim
@@ -20,49 +18,67 @@ const int RED = 0;
 const int BLUE = 1;
 
 enum class ArmorType { SMALL, LARGE, INVALID };
-enum class ArmorName {
-  B1,
-  B2,
-  B3,
-  B4,
-  B5,
-  B7,
-  R1,
-  R2,
-  R3,
-  R4,
-  R5,
-  R7
-};
 const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
+
+struct Light : public cv::Rect
+{
+  Light() = default;
+  explicit Light(cv::Rect box, cv::Point2f top, cv::Point2f bottom, int area, float tilt_angle)
+  : cv::Rect(box), top(top), bottom(bottom), tilt_angle(tilt_angle)
+  {
+    length = cv::norm(top - bottom);
+    width = area / length;
+    center = (top + bottom) / 2;
+  }
+
+  int color;
+  cv::Point2f top, bottom;
+  cv::Point2f center;
+  double length;
+  double width;
+  float tilt_angle;
+};
 
 struct Armor
 {
-  ArmorName name;
-  std::string number;
+  // 基本标识
+  std::string number;        // 兼容旧字段，不强制使用
 
-  cv::Point2f center;       // 不是对角线交点，不能作为实际中心！
-  cv::Point2f center_norm;
+  // 几何属性
+  cv::Point2f center;        // 由关键点/包围框计算的图像中心
+  cv::Point2f center_norm;   // 归一化中心（可选，若未使用可忽略）
+  ArmorType type;            // SMALL / LARGE
+  cv::Rect bbox;             // 由关键点计算的外接矩形
+  std::vector<cv::Point2f> armor_keypoints; // PnP 期望顺序：BL, TL, TR, BR
+  cv::Point2f offset_;       
 
-  ArmorType type;
+  // 分类/置信
+  float score;                       // 后处理的最终分数 obj×cls
+  std::string classification_result; // 完整类别字符串（如 "B3"、"R5" 或 "G/Bs/Bb"）
+  int team_id = -1;                  // 0 = blue, 1 = red, -1 = unknown
 
-  cv::Rect bbox;
-  ArmorName class_id;
-  std::vector<cv::Point2f> armor_keypoints;
-  cv::Point2f offset_;
+  // 可选：旧 Light 方案兼容（不强制填充）
+  Light left_light, right_light;
+  cv::Mat number_img;
 
-  float confidence;
-  std::string classification_result;
-  // team id for serial comms: 0 = blue, 1 = red, -1 = unknown
-  int team_id = -1;
-
-  Armor(ArmorName class_id, float confidence, const cv::Rect & bbox, std::vector<cv::Point2f> armor_keypoints, const cv::Point2f & center)
-  : name(class_id), center(center), bbox(bbox), class_id(class_id), armor_keypoints(armor_keypoints),
-    confidence(confidence) {}
+    Armor() = default;
+    Armor(float score,
+      const cv::Rect & bbox,
+      std::vector<cv::Point2f> armor_keypoints,
+      const cv::Point2f & center)
+    : number(),
+    center(center),
+    center_norm(),
+    type(ArmorType::INVALID),
+    bbox(bbox),
+    armor_keypoints(std::move(armor_keypoints)),
+    offset_(),
+    score(score),
+    classification_result(),
+    team_id(-1)
+  {}
 };
-
 
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__ARMOR_HPP_
-

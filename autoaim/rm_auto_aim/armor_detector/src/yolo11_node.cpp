@@ -3,6 +3,8 @@
 #include <opencv2/core.hpp>
 
 #include <algorithm>
+#include <numeric>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -33,6 +35,8 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
   this->declare_parameter<std::string>("image_topic", "/image_raw");
   std::string image_topic;
   this->get_parameter("image_topic", image_topic);
+  // 颜色过滤：-1 不过滤，0 只保留红，1 只保留蓝（与OpenVINO实现一致）
+  this->declare_parameter<int>("detect_color", -1);
 
   if (Init() != 0) {
     throw std::runtime_error("Yolo11Node init failed");
@@ -63,13 +67,11 @@ int Yolo11Node::PostProcess(
 
   rm_auto_aim::armors_keypoints.clear();
 
-  std::shared_ptr<hobot::dnn_node::output_parser::DnnParserResult> det_result =
-      nullptr;
-  if (hobot::dnn_node::parser_yolov8::Parse(node_output, det_result) < 0 ||
-      !det_result) {
-    RCLCPP_ERROR(this->get_logger(), "Parse YOLOv8 output failed");
-    return -1;
-  }
+  // 使用自定义输出解析：
+  // 0..7: 四个关键点(TL, BL, BR, TR) 的 x,y
+  // 8: objectness (sigmoid)
+  // 9..12: 颜色分支 (红、蓝、灰、紫)
+  // 13..21: 数字/类别 (G,1,2,3,4,5,O,Bs,Bb)
 
   auto parser_output = std::dynamic_pointer_cast<DnnOutput>(node_output);
   float ratio = 1.0f;
@@ -111,29 +113,114 @@ int Yolo11Node::PostProcess(
     return scaled;
   };
 
-  for (const auto &det : det_result->perception.det) {
-    const float xmin = scale_x(det.bbox.xmin);
-    const float ymin = scale_y(det.bbox.ymin);
-    const float xmax = scale_x(det.bbox.xmax);
-    const float ymax = scale_y(det.bbox.ymax);
+  if (node_output->output_tensors.empty()) {
+    RCLCPP_ERROR(this->get_logger(), "No output tensors to parse");
+    return -1;
+  }
 
+  auto tensor = node_output->output_tensors[0];
+  tensor->CACHE_INVALIDATE();
+
+  int nd = tensor->properties.validShape.numDimensions;
+  const auto *dim = tensor->properties.validShape.dimensionSize;
+  int rows = 0, cols = 0;
+  if (nd == 3) { rows = static_cast<int>(dim[1]); cols = static_cast<int>(dim[2]); }
+  else if (nd == 2) { rows = static_cast<int>(dim[0]); cols = static_cast<int>(dim[1]); }
+  else if (nd == 4) { rows = static_cast<int>(dim[2]); cols = static_cast<int>(dim[3]); }
+  else { RCLCPP_ERROR(this->get_logger(), "Unsupported tensor dims: %d", nd); return -1; }
+  if (cols < 22) { RCLCPP_ERROR(this->get_logger(), "Expect >=22 columns, got %d", cols); return -1; }
+
+  auto *data = tensor->GetTensorData<float>();
+  auto sigmoid = [](float x){ return 1.0f / (1.0f + std::exp(-x)); };
+
+  const float conf_thr = 0.65f;
+  const float nms_thr = 0.45f;
+  int detect_color = -1;
+  (void)this->get_parameter("detect_color", detect_color);
+
+  struct Item { cv::Rect2f box; float class_score; float disp_score; rm_auto_aim::ArmorDetection det; };
+  std::vector<Item> items; items.reserve(rows);
+
+  for (int i = 0; i < rows; ++i) {
+    const float *r = data + i * cols;
+    float obj = sigmoid(r[8]);
+    if (obj < conf_thr) continue;
+
+    // 颜色 argmax 9..12
+    int color_idx = 0; float color_max = r[9];
+    for (int k = 10; k <= 12; ++k) if (r[k] > color_max) { color_max = r[k]; color_idx = k - 9; }
+    if (color_idx >= 2) continue; // 丢弃灰/紫
+    // OpenVINO风格的颜色过滤：detect_color==0 只保留红(丢弃蓝)，detect_color==1 只保留蓝(丢弃红)
+    if (detect_color == 0 && color_idx == 1) continue; // 0: red mode, drop blue
+    if (detect_color == 1 && color_idx == 0) continue; // 1: blue mode, drop red
+
+    // 数字/类别 argmax 13..21
+    int cls_idx = 0; float cls_max = r[13];
+    for (int k = 14; k <= 21; ++k) if (r[k] > cls_max) { cls_max = r[k]; cls_idx = k - 13; }
+
+    // 关键点：模型坐标->原图坐标 (输入顺序 TL, BL, BR, TR)
+    float tlx = scale_x(r[0]); float tly = scale_y(r[1]);
+    float blx = scale_x(r[2]); float bly = scale_y(r[3]);
+    float brx = scale_x(r[4]); float bry = scale_y(r[5]);
+    float trx = scale_x(r[6]); float try_ = scale_y(r[7]);
+
+    // PnP 期望顺序：BL, TL, TR, BR
     std::vector<cv::Point2f> kps{
-        {xmin, ymin},
-        {xmax, ymin},
-        {xmax, ymax},
-        {xmin, ymax},
+      {blx, bly}, {tlx, tly}, {trx, try_}, {brx, bry}
     };
+
+    // 外接框用于 NMS
+    float minx = std::min(std::min(tlx, blx), std::min(brx, trx));
+    float maxx = std::max(std::max(tlx, blx), std::max(brx, trx));
+    float miny = std::min(std::min(tly, bly), std::min(bry, try_));
+    float maxy = std::max(std::max(tly, bly), std::max(bry, try_));
+    cv::Rect2f rect(minx, miny, std::max(0.0f, maxx - minx), std::max(0.0f, maxy - miny));
+
+    static const char* num_labels[9] = {"G","1","2","3","4","5","O","Bs","Bb"};
+    std::string label = num_labels[cls_idx];
+    std::string class_name;
+    if (label == "1" || label == "2" || label == "3" || label == "4" || label == "5") {
+      class_name = (color_idx == 0 ? "R" : "B");
+      class_name += label;
+    } else {
+      class_name = label;
+    }
+
+    float class_score = cls_max;        // 用于 NMS 排序与保留阈值（与OpenVINO一致）
+    float final_score = obj * cls_max;  // 显示分数，可保留以供上层参考
 
     rm_auto_aim::ArmorDetection det_out;
     det_out.kpts = std::move(kps);
-    det_out.class_name = det.class_name ? det.class_name : "";
-    det_out.score = det.score;
+    det_out.class_name = class_name;
+    det_out.score = final_score;
     if (parser_output && parser_output->msg_header) {
       det_out.frame_id = parser_output->msg_header->frame_id;
       det_out.stamp_sec = parser_output->msg_header->stamp.sec;
       det_out.stamp_nanosec = parser_output->msg_header->stamp.nanosec;
     }
-    rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
+    items.push_back({rect, class_score, final_score, std::move(det_out)});
+  }
+
+  // 简单 NMS
+  auto iou = [](const cv::Rect2f &a, const cv::Rect2f &b){
+    float inter = (a & b).area();
+    float uni = a.area() + b.area() - inter;
+    return uni > 0 ? inter / uni : 0.0f;
+  };
+  std::vector<int> idx(items.size());
+  std::iota(idx.begin(), idx.end(), 0);
+  std::sort(idx.begin(), idx.end(), [&](int i, int j){return items[i].class_score > items[j].class_score;});
+  std::vector<char> suppressed(items.size(), 0);
+  for (size_t m = 0; m < idx.size(); ++m) {
+    int i = idx[m];
+    if (suppressed[i]) continue;
+    if (items[i].class_score < conf_thr) continue; // 与OpenVINO相同，NMS阈值基于类别分数
+    rm_auto_aim::armors_keypoints.emplace_back(std::move(items[i].det));
+    for (size_t n = m + 1; n < idx.size(); ++n) {
+      int j = idx[n];
+      if (suppressed[j]) continue;
+      if (iou(items[i].box, items[j].box) > nms_thr) suppressed[j] = 1;
+    }
   }
 
   RCLCPP_INFO(this->get_logger(),
