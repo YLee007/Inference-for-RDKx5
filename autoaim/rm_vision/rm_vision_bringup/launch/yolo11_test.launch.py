@@ -4,6 +4,10 @@ from ament_index_python.packages import get_package_share_directory
 from launch.actions import ExecuteProcess  
 sys.path.append(os.path.join(get_package_share_directory('rm_vision_bringup'), 'launch'))
 
+def _resolve_model_file():
+    pkg_share = get_package_share_directory('rm_vision_bringup')
+    return os.path.abspath(os.path.join(pkg_share, '..', '..', 'model', 'final.bin'))
+
 
 def generate_launch_description():
 
@@ -42,7 +46,7 @@ def generate_launch_description():
                     package='armor_detector',
                     plugin='rm_auto_aim::Yolo11Node',
                     name='yolo11_node',
-                    parameters=[node_params, {'config_file': os.path.abspath(os.path.join(get_package_share_directory('rm_vision_bringup'), '..', '..', 'model', 'yolov11workconfig.json'))}],
+                    parameters=[node_params, {'model_file': _resolve_model_file()}],
                     extra_arguments=[{'use_intra_process_comms': True}]
                 )
             ],

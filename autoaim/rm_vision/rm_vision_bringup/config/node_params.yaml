@@ -72,8 +72,13 @@
 
 /yolo11_node:
   ros__parameters:
-    config_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov11workconfig.json"
     image_topic: "/image_raw"
+    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/final.bin"
+    model_name: "yolov5_armor"
+    task_num: 4
+    score_threshold: 0.65
+    nms_threshold: 0.45
+    detect_color: -1
 
 
 # /rm_auto_record:
