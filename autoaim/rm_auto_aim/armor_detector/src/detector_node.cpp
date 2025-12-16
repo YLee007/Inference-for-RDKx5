@@ -122,29 +122,29 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
   }
 }
 
-void ArmorDetectorNode::hbmemImageCallback(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr hbmem_msg)
-{
-  // 将共享内存消息转换为标准图像消息
-  auto img_msg = std::make_shared<sensor_msgs::msg::Image>();
+// void ArmorDetectorNode::hbmemImageCallback(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr hbmem_msg)
+// {
+//   // 将共享内存消息转换为标准图像消息
+//   auto img_msg = std::make_shared<sensor_msgs::msg::Image>();
   
-  // 设置图像基本信息
-  img_msg->header.stamp = hbmem_msg->time_stamp;
-  img_msg->header.frame_id = "camera_optical_frame";
-  img_msg->height = hbmem_msg->height;
-  img_msg->width = hbmem_msg->width;
-  img_msg->encoding = "nv12";  // 从共享内存消息的编码字段获取
-  img_msg->is_bigendian = false;
-  img_msg->step = hbmem_msg->step;
+//   // 设置图像基本信息
+//   img_msg->header.stamp = hbmem_msg->time_stamp;
+//   img_msg->header.frame_id = "camera_optical_frame";
+//   img_msg->height = hbmem_msg->height;
+//   img_msg->width = hbmem_msg->width;
+//   img_msg->encoding = "nv12";  // 从共享内存消息的编码字段获取
+//   img_msg->is_bigendian = false;
+//   img_msg->step = hbmem_msg->step;
   
-  // 复制图像数据
-  img_msg->data.resize(hbmem_msg->data_size);
-  std::copy(hbmem_msg->data.begin(), 
-            hbmem_msg->data.begin() + hbmem_msg->data_size, 
-            img_msg->data.begin());
+//   // 复制图像数据
+//   img_msg->data.resize(hbmem_msg->data_size);
+//   std::copy(hbmem_msg->data.begin(), 
+//             hbmem_msg->data.begin() + hbmem_msg->data_size, 
+//             img_msg->data.begin());
   
-  // 调用原来的图像处理函数
-  imageCallback(img_msg);
-}
+//   // 调用原来的图像处理函数
+//   imageCallback(img_msg);
+// }
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)
 {
