@@ -29,6 +29,9 @@ struct DnnOutput : public hobot::dnn_node::DnnNodeOutput {
   // 预处理后实际送入模型的分辨率（hobotcv resize 后的尺寸）
   int resized_w = 0;
   int resized_h = 0;
+  // letterbox/resize 偏移
+  float x_offset = 0.0f;
+  float y_offset = 0.0f;
   // 缓存用于本地渲染的 pyramid
   std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
 };
@@ -50,6 +53,9 @@ class Yolo11Node : public hobot::dnn_node::DnnNode {
  private:
   int model_input_width_ = -1;
   int model_input_height_ = -1;
+  float score_threshold_ = 0.65f;
+  float nms_threshold_ = 0.45f;
+  int detect_color_ = -1;
 
   // 图片订阅
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;

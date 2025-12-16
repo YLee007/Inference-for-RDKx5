@@ -1,8 +1,8 @@
 {
-	"model_file": "",
-	"model_name": "yolo11_armor",
+	"model_file": "autoaim\model\final.bin",
+	"model_name": "yolov5_armor",
 	"task_num": 4,
-	"dnn_Parser": "yolov11",
+	"dnn_Parser": "yolov",
 	"model_output_count": 22,
 	"reg_max": 16,
 	"class_num": 9,

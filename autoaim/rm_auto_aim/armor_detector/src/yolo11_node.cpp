@@ -284,7 +284,6 @@ static int ResizeNV12Img(const char *in_img_data,
 
 int Yolo11Node::SetNodePara() {
   RCLCPP_INFO(this->get_logger(), "Yolo11Node::SetNodePara()");
-  // ensure dnn_node_para_ptr_ exists
   if (!dnn_node_para_ptr_) {
     RCLCPP_ERROR(this->get_logger(), "dnn_node_para_ptr_ is null");
     return -1;
@@ -294,7 +293,7 @@ int Yolo11Node::SetNodePara() {
   this->declare_parameter<std::string>("config_file", "");
   std::string config_file;
   this->get_parameter("config_file", config_file);
-  // If user didn't pass config_file, try the repo default path
+  
   if (config_file.empty()) {
     config_file = "autoaim/model/yolov11workconfig.json";
     RCLCPP_INFO(this->get_logger(), "No config_file param provided, trying default: %s", config_file.c_str());
@@ -306,12 +305,11 @@ int Yolo11Node::SetNodePara() {
   } catch (...) {
     abs_config_path = config_file;
   }
-  RCLCPP_INFO(this->get_logger(), "Trying parser config: %s", abs_config_path.c_str());
+  RCLCPP_INFO(this->get_logger(), "Trying config file: %s", abs_config_path.c_str());
 
   if (!std::filesystem::exists(abs_config_path)) {
-    RCLCPP_WARN(this->get_logger(), "Config file does not exist: %s -- parser will not be configured. Pass --ros-args -p config_file:=<path> to override.", abs_config_path.c_str());
-    // Do not fail startup; allow node to run without parser configuration
-    return 0;
+    RCLCPP_ERROR(this->get_logger(), "Config file does not exist: %s. Please provide model_file and task_num via ROS parameters or config file.", abs_config_path.c_str());
+    return -1;
   }
 
   std::ifstream ifs(abs_config_path.c_str());
@@ -319,21 +317,17 @@ int Yolo11Node::SetNodePara() {
     RCLCPP_ERROR(this->get_logger(), "Open config file [%s] failed", abs_config_path.c_str());
     return -1;
   }
+  
   rapidjson::IStreamWrapper isw(ifs);
   rapidjson::Document document;
   document.ParseStream(isw);
+  
   if (document.HasParseError()) {
     RCLCPP_ERROR(this->get_logger(), "Parse config file [%s] failed", config_file.c_str());
     return -1;
   }
 
-  int ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
-  if (ret < 0) {
-    RCLCPP_ERROR(this->get_logger(), "parser_yolov8::LoadConfig failed for %s", config_file.c_str());
-    return -1;
-  }
-
-  // Populate basic dnn_node parameters if present
+  // Only read basic dnn_node parameters (no parser_yolov8::LoadConfig call)
   if (document.HasMember("model_file")) {
     dnn_node_para_ptr_->model_file = document["model_file"].GetString();
   }
@@ -344,7 +338,13 @@ int Yolo11Node::SetNodePara() {
     dnn_node_para_ptr_->task_num = document["task_num"].GetInt();
   }
 
-  RCLCPP_INFO(this->get_logger(), "Loaded parser config from %s", config_file.c_str());
+  RCLCPP_INFO(this->get_logger(), 
+              "Loaded config from %s: model_file=%s, model_name=%s, task_num=%d", 
+              config_file.c_str(),
+              dnn_node_para_ptr_->model_file.c_str(),
+              dnn_node_para_ptr_->model_name.c_str(),
+              dnn_node_para_ptr_->task_num);
+  
   return 0;
 }
 
