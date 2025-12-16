@@ -10,14 +10,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <filesystem>
-
-#include "rapidjson/document.h"
-#include "rapidjson/istreamwrapper.h"
-
-#include "dnn_node/util/output_parser/detection/ptq_yolo8_output_parser.h"
-#include "dnn_node/util/output_parser/perception_common.h"
 #include "dnn_node/util/image_proc.h"
 #include "hobot_cv/hobotcv_imgproc.h"
 #include "rclcpp_components/register_node_macro.hpp"
@@ -33,10 +25,17 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
   using std::placeholders::_1;
 
   this->declare_parameter<std::string>("image_topic", "/image_raw");
+  this->declare_parameter<std::string>("model_file", "autoaim/model/final.bin");
+  this->declare_parameter<std::string>("model_name", "");
+  this->declare_parameter<int>("task_num", 2);
+  this->declare_parameter<std::string>("config_file", "");
+  this->declare_parameter<double>("score_threshold", 0.65);
+  this->declare_parameter<double>("nms_threshold", 0.45);
+  this->declare_parameter<int>("detect_color", -1);
+
   std::string image_topic;
   this->get_parameter("image_topic", image_topic);
-  // 颜色过滤：-1 不过滤，0 只保留红，1 只保留蓝（与OpenVINO实现一致）
-  this->declare_parameter<int>("detect_color", -1);
+  this->get_parameter("detect_color", detect_color_);
 
   if (Init() != 0) {
     throw std::runtime_error("Yolo11Node init failed");
@@ -77,6 +76,8 @@ int Yolo11Node::PostProcess(
   float ratio = 1.0f;
   int original_w = model_input_width_;
   int original_h = model_input_height_;
+  float x_offset = 0.0f;
+  float y_offset = 0.0f;
   if (parser_output) {
     if (parser_output->ratio > 0.0f) {
       ratio = parser_output->ratio;
@@ -87,12 +88,9 @@ int Yolo11Node::PostProcess(
     if (parser_output->img_h > 0) {
       original_h = parser_output->img_h;
     }
+    x_offset = parser_output->x_offset;
+    y_offset = parser_output->y_offset;
   }
-
-  // 计算 letterbox 偏移量
-  float scale_factor = 1.0f / ratio;  // letterbox 的实际缩放因子
-  float x_offset = (model_input_width_ - original_w * scale_factor) / 2.0f;
-  float y_offset = (model_input_height_ - original_h * scale_factor) / 2.0f;
 
   const auto scale_x = [&](float value) {
     // letterbox 坐标映射：先减去偏移，再缩放到原图
@@ -133,10 +131,9 @@ int Yolo11Node::PostProcess(
   auto *data = tensor->GetTensorData<float>();
   auto sigmoid = [](float x){ return 1.0f / (1.0f + std::exp(-x)); };
 
-  const float conf_thr = 0.65f;
-  const float nms_thr = 0.45f;
-  int detect_color = -1;
-  (void)this->get_parameter("detect_color", detect_color);
+  const float conf_thr = score_threshold_;
+  const float nms_thr = nms_threshold_;
+  const int detect_color = detect_color_;
 
   struct Item { cv::Rect2f box; float class_score; float disp_score; rm_auto_aim::ArmorDetection det; };
   std::vector<Item> items; items.reserve(rows);
@@ -289,62 +286,29 @@ int Yolo11Node::SetNodePara() {
     return -1;
   }
 
-  // Declare and read config_file parameter
-  this->declare_parameter<std::string>("config_file", "");
-  std::string config_file;
-  this->get_parameter("config_file", config_file);
-  
-  if (config_file.empty()) {
-    config_file = "autoaim/model/yolov11workconfig.json";
-    RCLCPP_INFO(this->get_logger(), "No config_file param provided, trying default: %s", config_file.c_str());
+  this->get_parameter("model_file", dnn_node_para_ptr_->model_file);
+  this->get_parameter("model_name", dnn_node_para_ptr_->model_name);
+  this->get_parameter("task_num", dnn_node_para_ptr_->task_num);
+  this->get_parameter("score_threshold", score_threshold_);
+  this->get_parameter("nms_threshold", nms_threshold_);
+  this->get_parameter("detect_color", detect_color_);
+  std::string legacy_config;
+  this->get_parameter("config_file", legacy_config);
+  if (!legacy_config.empty()) {
+    RCLCPP_WARN(this->get_logger(),
+                "config_file parameter is provided but ignored; use ROS params instead");
   }
 
-  std::string abs_config_path;
-  try {
-    abs_config_path = std::filesystem::absolute(config_file).string();
-  } catch (...) {
-    abs_config_path = config_file;
-  }
-  RCLCPP_INFO(this->get_logger(), "Trying config file: %s", abs_config_path.c_str());
-
-  if (!std::filesystem::exists(abs_config_path)) {
-    RCLCPP_ERROR(this->get_logger(), "Config file does not exist: %s. Please provide model_file and task_num via ROS parameters or config file.", abs_config_path.c_str());
-    return -1;
-  }
-
-  std::ifstream ifs(abs_config_path.c_str());
-  if (!ifs) {
-    RCLCPP_ERROR(this->get_logger(), "Open config file [%s] failed", abs_config_path.c_str());
-    return -1;
-  }
-  
-  rapidjson::IStreamWrapper isw(ifs);
-  rapidjson::Document document;
-  document.ParseStream(isw);
-  
-  if (document.HasParseError()) {
-    RCLCPP_ERROR(this->get_logger(), "Parse config file [%s] failed", config_file.c_str());
-    return -1;
-  }
-
-  // Only read basic dnn_node parameters (no parser_yolov8::LoadConfig call)
-  if (document.HasMember("model_file")) {
-    dnn_node_para_ptr_->model_file = document["model_file"].GetString();
-  }
-  if (document.HasMember("model_name")) {
-    dnn_node_para_ptr_->model_name = document["model_name"].GetString();
-  }
-  if (document.HasMember("task_num")) {
-    dnn_node_para_ptr_->task_num = document["task_num"].GetInt();
-  }
-
-  RCLCPP_INFO(this->get_logger(), 
-              "Loaded config from %s: model_file=%s, model_name=%s, task_num=%d", 
-              config_file.c_str(),
+  RCLCPP_INFO(this->get_logger(),
+              "Params: model_file=%s, model_name=%s, task_num=%d, "
+              "score_threshold=%.3f, nms_threshold=%.3f, detect_color=%d",
               dnn_node_para_ptr_->model_file.c_str(),
               dnn_node_para_ptr_->model_name.c_str(),
-              dnn_node_para_ptr_->task_num);
-  
+              dnn_node_para_ptr_->task_num,
+              score_threshold_,
+              nms_threshold_,
+              detect_color_);
+
   return 0;
 }
 
@@ -410,6 +374,8 @@ void Yolo11Node::FeedImg(
     // 记录 letterbox 偏移量（需要在 PostProcess 中使用）
     dnn_output->img_w = cv_img->image.cols;  // 原图宽度
     dnn_output->img_h = cv_img->image.rows;  // 原图高度
+    dnn_output->x_offset = static_cast<float>(x_offset);
+    dnn_output->y_offset = static_cast<float>(y_offset);
 
     RCLCPP_DEBUG(this->get_logger(), 
                  "Letterbox: input=%dx%d, model=%dx%d, scale=%.3f, offset=(%d,%d), ratio=%.3f",
@@ -425,8 +391,8 @@ void Yolo11Node::FeedImg(
     if (static_cast<int>(img_msg->height) != model_input_height_ ||
         static_cast<int>(img_msg->width) != model_input_width_) {
     cv::Mat out_img;
-    float ratio = 1.0f;
-    int out_h = 0, out_w = 0;
+     float ratio = 1.0f;
+     int out_h = 0, out_w = 0;
     int ret = ResizeNV12Img(reinterpret_cast<const char *>(img_msg->data.data()),
                             img_msg->height,
                             img_msg->width,
@@ -456,6 +422,8 @@ void Yolo11Node::FeedImg(
     dnn_output->ratio = ratio;
     dnn_output->resized_w = out_img_width;
     dnn_output->resized_h = out_img_height;
+    dnn_output->x_offset = 0.0f;
+    dnn_output->y_offset = 0.0f;
     } else {
       // 直接构造 pyramid
       pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
@@ -467,6 +435,8 @@ void Yolo11Node::FeedImg(
       dnn_output->ratio = 1.0f;
       dnn_output->resized_w = img_msg->width;
       dnn_output->resized_h = img_msg->height;
+      dnn_output->x_offset = 0.0f;
+      dnn_output->y_offset = 0.0f;
     }
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), 
