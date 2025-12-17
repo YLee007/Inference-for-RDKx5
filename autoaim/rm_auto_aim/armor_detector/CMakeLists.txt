@@ -63,10 +63,10 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE armor_detector_node
 )
 
-# Register Yolo11Node component and provide an executable for convenience
+# Register YoloNode component and provide an executable for convenience
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN rm_auto_aim::Yolo11Node
-  EXECUTABLE yolo11_node
+  PLUGIN rm_auto_aim::YoloNode
+  EXECUTABLE yolo_node
 )
 
 #############

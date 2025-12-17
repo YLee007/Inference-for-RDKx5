@@ -1,5 +1,5 @@
-#ifndef ARMOR_DETECTOR__YOLO11_NODE_HPP_
-#define ARMOR_DETECTOR__YOLO11_NODE_HPP_
+#ifndef ARMOR_DETECTOR__YOLO_HPP_
+#define ARMOR_DETECTOR__YOLO_HPP_
 
 #include <memory>
 #include <string>
@@ -36,13 +36,13 @@ struct DnnOutput : public hobot::dnn_node::DnnNodeOutput {
   std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
 };
 
-class Yolo11Node : public hobot::dnn_node::DnnNode {
+class YoloNode : public hobot::dnn_node::DnnNode {
  public:
-  Yolo11Node(const std::string &node_name = "yolo11_node",
-             const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+  YoloNode(const std::string &node_name = "yolo_node",
+           const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
   
   // 为组件支持添加的构造函数
-  explicit Yolo11Node(const rclcpp::NodeOptions &options);
+  explicit YoloNode(const rclcpp::NodeOptions &options);
 
  protected:
   int SetNodePara() override;
@@ -64,4 +64,4 @@ class Yolo11Node : public hobot::dnn_node::DnnNode {
 
 }  // namespace rm_auto_aim
 
-#endif  // ARMOR_DETECTOR__YOLO11_NODE_HPP_
+#endif  // ARMOR_DETECTOR__YOLO_HPP_

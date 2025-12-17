@@ -28,7 +28,7 @@
     detect_color: 0
     binary_thres: 78
 
-    # YOLO parser config file (relative to repo root or absolute). Used by Yolo11Node when launched.
+    # YOLO parser config file (relative to repo root or absolute). Used by YoloNode when launched.
     config_file: "autoaim/model/yolov11workconfig.json"
 
     light.min_ratio: 0.1
@@ -70,7 +70,7 @@
       threshold_fix: 0.0
 
 
-/yolo11_node:
+/yolo_node:
   ros__parameters:
     image_topic: "/image_raw"
     model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/final.bin"

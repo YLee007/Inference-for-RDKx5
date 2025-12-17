@@ -1,4 +1,4 @@
-#include "armor_detector/yolo11_node.hpp"
+#include "armor_detector/yolo.hpp"
 #include "armor_detector/armors_shared.hpp"
 #include <opencv2/core.hpp>
 
@@ -16,10 +16,10 @@
 
 namespace rm_auto_aim {
 
-Yolo11Node::Yolo11Node(const rclcpp::NodeOptions &options)
-    : Yolo11Node("yolo11_node", options) {}
+YoloNode::YoloNode(const rclcpp::NodeOptions &options)
+    : YoloNode("yolo_node", options) {}
 
-Yolo11Node::Yolo11Node(const std::string &node_name,
+YoloNode::YoloNode(const std::string &node_name,
                        const rclcpp::NodeOptions &options)
     : hobot::dnn_node::DnnNode(node_name, options) {
   using std::placeholders::_1;
@@ -38,7 +38,7 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
   this->get_parameter("detect_color", detect_color_);
 
   if (Init() != 0) {
-    throw std::runtime_error("Yolo11Node init failed");
+    throw std::runtime_error("YoloNode init failed");
   }
 
   if (GetModelInputSize(0, model_input_width_, model_input_height_) != 0) {
@@ -52,12 +52,12 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
 
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
       image_topic, rclcpp::SensorDataQoS(),
-      std::bind(&Yolo11Node::FeedImg, this, _1));
+      std::bind(&YoloNode::FeedImg, this, _1));
   RCLCPP_INFO(this->get_logger(), "Subscribed image topic: %s",
               image_topic.c_str());
 }
 
-int Yolo11Node::PostProcess(
+int YoloNode::PostProcess(
     const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output) {
   if (!rclcpp::ok() || !node_output) {
     RCLCPP_WARN(this->get_logger(), "Invalid node_output in PostProcess");
@@ -279,8 +279,8 @@ static int ResizeNV12Img(const char *in_img_data,
       src, in_img_height, in_img_width, out_img, resized_height, resized_width);
 }
 
-int Yolo11Node::SetNodePara() {
-  RCLCPP_INFO(this->get_logger(), "Yolo11Node::SetNodePara()");
+int YoloNode::SetNodePara() {
+  RCLCPP_INFO(this->get_logger(), "YoloNode::SetNodePara()");
   if (!dnn_node_para_ptr_) {
     RCLCPP_ERROR(this->get_logger(), "dnn_node_para_ptr_ is null");
     return -1;
@@ -312,7 +312,7 @@ int Yolo11Node::SetNodePara() {
   return 0;
 }
 
-void Yolo11Node::FeedImg(
+void YoloNode::FeedImg(
     const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
   if (!rclcpp::ok() || !img_msg) {
     RCLCPP_DEBUG(this->get_logger(), "Get img failed");
@@ -403,7 +403,7 @@ void Yolo11Node::FeedImg(
                             out_img,
                             ratio);
     if (ret < 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Resize nv12 img fail");
+      RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Resize nv12 img fail");
       return;
     }
 
@@ -439,13 +439,13 @@ void Yolo11Node::FeedImg(
       dnn_output->y_offset = 0.0f;
     }
   } else {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), 
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), 
                  "Unsupported image encoding: %s", img_msg->encoding.c_str());
     return;
   }
 
   if (!pyramid) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Get pyramid fail");
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Get pyramid fail");
     return;
   }
 
@@ -471,10 +471,10 @@ void Yolo11Node::FeedImg(
 
   if (Run(inputs, dnn_output, nullptr, false) != 0
       && Run(inputs, dnn_output, nullptr, false) != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Run inference fail!");
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
   }
 }
 
 }  // namespace rm_auto_aim
 
-RCLCPP_COMPONENTS_REGISTER_NODE(rm_auto_aim::Yolo11Node)
+RCLCPP_COMPONENTS_REGISTER_NODE(rm_auto_aim::YoloNode)

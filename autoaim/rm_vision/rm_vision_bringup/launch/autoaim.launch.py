@@ -47,8 +47,8 @@ def generate_launch_description():
                 ,
                 ComposableNode(
                     package='armor_detector',
-                    plugin='rm_auto_aim::Yolo11Node',
-                    name='yolo11_node',
+                    plugin='rm_auto_aim::YoloNode',
+                    name='yolo_node',
                     # pass node_params but override model_file with an absolute path
                     parameters=[node_params, {'model_file': _resolve_model_file()}],
                     extra_arguments=[{'use_intra_process_comms': True}]
