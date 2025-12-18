@@ -93,8 +93,5 @@ endif()
 ## Install ##
 #############
 
-ament_auto_package(
-  INSTALL_TO_SHARE
-  model
-)
+ament_auto_package()
 

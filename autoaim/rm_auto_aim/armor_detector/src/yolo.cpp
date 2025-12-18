@@ -1,6 +1,7 @@
 #include "armor_detector/yolo.hpp"
 #include "armor_detector/armors_shared.hpp"
 #include <opencv2/core.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 #include <algorithm>
 #include <numeric>
