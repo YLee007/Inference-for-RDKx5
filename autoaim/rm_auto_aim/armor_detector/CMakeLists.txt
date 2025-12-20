@@ -29,7 +29,8 @@ link_directories(
   ${SYS_ROOT}/usr/hobot/lib/
 )
 find_package(ament_cmake_auto REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+find_package(cv_bridge REQUIRED)
 find_package(hobot_cv REQUIRED)  # 添加对 hobot_cv 库的依赖
 find_package(sensor_msgs REQUIRED)
 find_package(dnn_node REQUIRED)
@@ -49,12 +50,14 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 target_include_directories(${PROJECT_NAME} PUBLIC 
   ${OpenCV_INCLUDE_DIRS}
   ${hobot_cv_INCLUDE_DIRS}  
+  ${cv_bridge_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} 
   ${OpenCV_LIBS}
   ${hobot_cv_LIBRARIES}  
   dnn_node::dnn_node
+  cv_bridge::cv_bridge
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}

@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
@@ -48,12 +49,27 @@ class Yolo11Node : public hobot::dnn_node::DnnNode {
                   node_output) override;
 
  private:
+  // 自定义解析配置（8点+置信度+颜色onehot+数字onehot）
+  struct CustomParserConfig {
+    int class_num = 9;
+    int color_num = 4; // 例如 红/蓝/None/Purple
+    float score_threshold = 0.5f;
+  } custom_cfg_;
+
+  // 类别名称表（可选）
+  std::vector<std::string> class_names_;
+
   int model_input_width_ = -1;
   int model_input_height_ = -1;
 
   // 图片订阅
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
   void FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+
+  // 自定义解析：从原始 DNNTensor 输出中解析检测框
+  int CustomParse(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &
+                  node_output,
+                  std::vector<rm_auto_aim::ArmorDetection> &detections);
 };
 
 }  // namespace rm_auto_aim

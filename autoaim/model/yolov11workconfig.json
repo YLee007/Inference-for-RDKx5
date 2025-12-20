@@ -8,8 +8,8 @@
 	"class_num": 9,
 	"cls_names_list": "D:\\Inference-for-RDKx5\\autoaim\\model\\config\\armor.list",
 	"strides": [8, 16, 32],
-	"score_threshold": 0.65,
-	"nms_threshold": 0.45,
+	"score_threshold": 0.1,
+	"nms_threshold": 0.1,
 	"nms_top_k": 300,
 	"output_order": [0,1,2,3,4,5]
 }

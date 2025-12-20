@@ -1,7 +1,7 @@
 #include "armor_detector/yolo11_node.hpp"
 #include "armor_detector/armors_shared.hpp"
 #include "armor_detector/armor.hpp"
-#include "dnn_node/include/ucp/easy_dnn/data_structure.h"
+#include "easy_dnn/data_structure.h"
 #include <opencv2/core.hpp>
 
 #include <algorithm>
@@ -12,15 +12,19 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
+#include <unordered_set>
+#include <cctype>
 
 #include "rapidjson/document.h"
 #include "rapidjson/istreamwrapper.h"
 
-#include "dnn_node/util/output_parser/detection/ptq_yolo8_output_parser.h"
-#include "dnn_node/util/output_parser/perception_common.h"
+#include <cmath>
 #include "dnn_node/util/image_proc.h"
 #include "hobot_cv/hobotcv_imgproc.h"
 #include "rclcpp_components/register_node_macro.hpp"
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/imgproc.hpp>
 
 namespace rm_auto_aim {
 
@@ -56,6 +60,86 @@ Yolo11Node::Yolo11Node(const std::string &node_name,
               image_topic.c_str());
 }
 
+int Yolo11Node::SetNodePara() {
+  // 声明并获取解析器配置文件参数；默认指向安装后的包内 model 目录
+  this->declare_parameter<std::string>("parser_config", "model/yolov11workconfig.json");
+  std::string config_file;
+  this->get_parameter("parser_config", config_file);
+
+  // 支持相对路径：优先按当前工作目录解析；若不存在，回退到包内 share 路径
+  std::string abs_config_path = config_file;
+  if (!std::filesystem::exists(abs_config_path)) {
+    try {
+      auto share_dir = ament_index_cpp::get_package_share_directory("armor_detector");
+      auto try_path = (std::filesystem::path(share_dir) / config_file).string();
+      if (std::filesystem::exists(try_path)) {
+        abs_config_path = try_path;
+      } else {
+        // 兼容常见布局：config 放在 share 根或 model 子目录
+        auto alt_path = (std::filesystem::path(share_dir) / "model" / std::filesystem::path(config_file).filename()).string();
+        if (std::filesystem::exists(alt_path)) {
+          abs_config_path = alt_path;
+        }
+      }
+    } catch (const std::exception &e) {
+      RCLCPP_WARN(this->get_logger(), "Failed to query package share dir: %s", e.what());
+    }
+  }
+
+  // 读取并加载自定义解析配置（可选：class_names 列表）
+  if (std::filesystem::exists(abs_config_path)) {
+    std::ifstream ifs(abs_config_path.c_str());
+    if (!ifs) {
+      RCLCPP_ERROR(this->get_logger(), "Open config file [%s] failed", abs_config_path.c_str());
+      return -1;
+    }
+    rapidjson::IStreamWrapper isw(ifs);
+    rapidjson::Document document;
+    document.ParseStream(isw);
+    if (document.HasParseError()) {
+      RCLCPP_ERROR(this->get_logger(), "Parse config file [%s] failed", abs_config_path.c_str());
+      return -1;
+    }
+    // 模型加载必要参数
+    if (document.HasMember("model_file") && document["model_file"].IsString()) {
+      dnn_node_para_ptr_->model_file = document["model_file"].GetString();
+    }
+    if (document.HasMember("model_name") && document["model_name"].IsString()) {
+      dnn_node_para_ptr_->model_name = document["model_name"].GetString();
+    }
+    if (document.HasMember("task_num") && document["task_num"].IsInt()) {
+      dnn_node_para_ptr_->task_num = document["task_num"].GetInt();
+    }
+    // 常规模型类型：非ROI，直接推理
+    dnn_node_para_ptr_->model_task_type = hobot::dnn_node::ModelTaskType::ModelInferType;
+
+    if (document.HasMember("class_num") && document["class_num"].IsInt()) {
+      custom_cfg_.class_num = document["class_num"].GetInt();
+    }
+    if (document.HasMember("score_threshold") && document["score_threshold"].IsNumber()) {
+      custom_cfg_.score_threshold = static_cast<float>(document["score_threshold"].GetDouble());
+    }
+    if (document.HasMember("cls_names_list") && document["cls_names_list"].IsString()) {
+      std::ifstream names_ifs(document["cls_names_list"].GetString());
+      if (names_ifs) {
+        std::string line;
+        while (std::getline(names_ifs, line)) {
+          if (!line.empty()) class_names_.push_back(line);
+        }
+      }
+    }
+    RCLCPP_INFO(this->get_logger(), "Loaded parser config: %s", abs_config_path.c_str());
+  } else {
+    RCLCPP_WARN(this->get_logger(), "Parser config not found: %s; using defaults", abs_config_path.c_str());
+  }
+
+  // 声明颜色过滤参数，默认不过滤
+  if (!this->has_parameter("detect_color")) {
+    this->declare_parameter<int>("detect_color", -1);
+  }
+  return 0;
+}
+
 int Yolo11Node::PostProcess(
   const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output) {
   if (!rclcpp::ok() || !node_output) {
@@ -64,10 +148,10 @@ int Yolo11Node::PostProcess(
   }
 
   rm_auto_aim::armors_keypoints.clear();
-  // 使用官方解析器读取输出
-  std::shared_ptr<hobot::dnn_node::output_parser::DnnParserResult> det_result = nullptr;
-  if (hobot::dnn_node::parser_yolov8::Parse(node_output, det_result) < 0 || !det_result) {
-    RCLCPP_ERROR(this->get_logger(), "Parse YOLOv8 output failed");
+  // 使用自定义解析读取输出
+  std::vector<rm_auto_aim::ArmorDetection> parsed;
+  if (CustomParse(node_output, parsed) != 0) {
+    RCLCPP_ERROR(this->get_logger(), "CustomParse failed");
     return -1;
   }
 
@@ -111,12 +195,12 @@ int Yolo11Node::PostProcess(
   int detect_color = -1;
   (void)this->get_parameter("detect_color", detect_color);
 
-  // 遍历解析器的检测结果，将 bbox 四角映射为关键点（并调整为 PnP 期望顺序：BL, TL, TR, BR）
-  for (const auto &det : det_result->perception.det) {
-    const float xmin = scale_x(det.bbox.xmin);
-    const float ymin = scale_y(det.bbox.ymin);
-    const float xmax = scale_x(det.bbox.xmax);
-    const float ymax = scale_y(det.bbox.ymax);
+  // 遍历自定义解析的检测结果，将四角映射为关键点（BL, TL, TR, BR）
+  for (const auto &det : parsed) {
+    const float xmin = scale_x(det.kpts[1].x); // TL.x
+    const float ymin = scale_y(det.kpts[1].y); // TL.y
+    const float xmax = scale_x(det.kpts[2].x); // TR.x
+    const float ymax = scale_y(det.kpts[0].y); // BL.y
 
     // PnP顺序：BL(xmin,ymax), TL(xmin,ymin), TR(xmax,ymin), BR(xmax,ymax)
     std::vector<cv::Point2f> kps{
@@ -128,7 +212,7 @@ int Yolo11Node::PostProcess(
     // 类别名称映射与颜色过滤：
     // - 若解析器类名以 'R' 或 'B' 开头（如 R1/B1），可按 detect_color 过滤
     // - 其它类（G,O,Bs,Bb）不受颜色过滤影响
-    std::string cls = det.class_name ? det.class_name : "";
+    std::string cls = det.class_name;
     if (detect_color == 0) { // 仅红
       if (!cls.empty() && (cls[0] == 'B' || cls[0] == 'b')) {
         continue;
@@ -179,111 +263,189 @@ int Yolo11Node::PostProcess(
   return 0;
 }
 
-// 使用 hobotcv 对 NV12 图片做等比例 resize（保留宽高比），并返回 resized NV12 图片（存于 out_img）和 ratio
-static int ResizeNV12Img(const char *in_img_data,
-                  const int &in_img_height,
-                  const int &in_img_width,
-                  int &resized_img_height,
-                  int &resized_img_width,
-                  const int &scaled_img_height,
-                  const int &scaled_img_width,
-                  cv::Mat &out_img,
-                  float &ratio) {
-  cv::Mat src(
-      in_img_height * 3 / 2, in_img_width, CV_8UC1, (void *)(in_img_data));
-  float ratio_w =
-      static_cast<float>(in_img_width) / static_cast<float>(scaled_img_width);
-  float ratio_h =
-      static_cast<float>(in_img_height) / static_cast<float>(scaled_img_height);
-  float dst_ratio = std::max(ratio_w, ratio_h);
-  int resized_width, resized_height;
-  if (dst_ratio == ratio_w) {
-    resized_width = scaled_img_width;
-    resized_height = static_cast<float>(in_img_height) / dst_ratio;
-  } else if (dst_ratio == ratio_h) {
+static inline float Sigmoid(float x) {
+  return 1.0f / (1.0f + std::exp(-x));
+}
 
-  std::ifstream ifs(abs_config_path.c_str());
-  if (!ifs) {
-    RCLCPP_ERROR(this->get_logger(), "Open config file [%s] failed", abs_config_path.c_str());
+int Yolo11Node::CustomParse(
+  const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output,
+  std::vector<rm_auto_aim::ArmorDetection> &detections) {
+  detections.clear();
+  if (!node_output) return -1;
+  const auto &tensors = node_output->output_tensors;
+  if (tensors.empty() || !tensors[0]) {
+    RCLCPP_WARN(this->get_logger(), "No output tensors to parse");
+    return 0;
+  }
+  auto tensor = tensors[0];
+  // 直接访问底层内存，不依赖特定便捷方法
+  auto *data = reinterpret_cast<float*>(tensor->sysMem[0].virAddr);
+  hbDNNTensorProperties &prop = tensor->properties;
+
+  // 期望形状类似 [1, rows, cols]，其中 cols >= 8+1+color_num+class_num
+  int rows = prop.validShape.dimensionSize[1];
+  int cols = prop.validShape.dimensionSize[2];
+  if (!data || rows <= 0 || cols <= 0) {
+    RCLCPP_ERROR(this->get_logger(), "Invalid tensor data/shape");
     return -1;
   }
-  rapidjson::IStreamWrapper isw(ifs);
-  rapidjson::Document document;
-  document.ParseStream(isw);
-  if (document.HasParseError()) {
-    RCLCPP_ERROR(this->get_logger(), "Parse config file [%s] failed", config_file.c_str());
-    return -1;
 
-  int ret = hobot::dnn_node::parser_yolov8::LoadConfig(document);
-  if (ret < 0) {
-    RCLCPP_ERROR(this->get_logger(), "parser_yolov8::LoadConfig failed for %s", config_file.c_str());
+  const int conf_col = 8;
+  const int color_start = 9;
+  const int color_end = color_start + custom_cfg_.color_num; // 不含右端
+  const int cls_start = color_end;
+  const int cls_end = cls_start + custom_cfg_.class_num; // 不含右端
+  if (cols < cls_end) {
+    RCLCPP_ERROR(this->get_logger(), "Cols %d < required %d", cols, cls_end);
     return -1;
   }
-  }
 
-  auto dnn_output = std::make_shared<DnnOutput>();
+  // 读取颜色过滤参数：-1 不过滤；0 仅红；1 仅蓝（按你模型的约定）
+  int detect_color = -1;
+  (void)this->get_parameter("detect_color", detect_color);
 
-  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
-  // 根据图像编码格式选择处理方式（仅保留 NV12 路径）
-  if (img_msg->encoding == "nv12") {
-    // NV12 格式处理：如果输入尺寸和模型输入不一致，先用 hobotcv 做等比例 resize（保留宽高比）
-    if (static_cast<int>(img_msg->height) != model_input_height_ ||
-        static_cast<int>(img_msg->width) != model_input_width_) {
-    cv::Mat out_img;
-    float ratio = 1.0f;
-    int out_h = 0, out_w = 0;
-    int ret = ResizeNV12Img(reinterpret_cast<const char *>(img_msg->data.data()),
-                            img_msg->height,
-                            img_msg->width,
-                            out_h,
-                            out_w,
-                            model_input_height_,
-                            model_input_width_,
-                            out_img,
-                            ratio);
-    if (ret < 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Resize nv12 img fail");
-      return;
+  for (int r = 0; r < rows; ++r) {
+    const float conf_raw = data[r * cols + conf_col];
+    const float confidence = Sigmoid(conf_raw);
+    if (confidence < custom_cfg_.score_threshold) continue;
+
+    // 颜色 one-hot 最大值索引
+    int best_color = 0; float best_color_score = -1e9f;
+    for (int c = color_start; c < color_end; ++c) {
+      float s = data[r * cols + c];
+      if (s > best_color_score) { best_color_score = s; best_color = c - color_start; }
+    }
+    // 颜色过滤：根据约定进行保留/丢弃
+    if (detect_color == 0 && best_color == 1) { // 仅红时丢弃蓝（若约定 0红1蓝）
+      continue;
+    } else if (detect_color == 1 && best_color == 0) { // 仅蓝时丢弃红
+      continue;
     }
 
-    // 对于 NV12，实际像素高度为 rows * 2 / 3（因为 Mat 存储 Y + UV）
-    int out_img_width = out_img.cols;
-    int out_img_height = out_img.rows * 2 / 3;
-        det_out.class_name = cls;
-        det_out.score = det.score;
-        reinterpret_cast<const char *>(out_img.data),
-        out_img_height,
-        out_img_width,
-        model_input_height_,
-        model_input_width_);
-        rm_auto_aim::armors_keypoints.emplace_back(std::move(det_out));
-      }
+    // 类别 one-hot 最大值索引
+    int best_cls = 0; float best_cls_score = -1e9f;
+    for (int c = cls_start; c < cls_end; ++c) {
+      float s = data[r * cols + c];
+      if (s > best_cls_score) { best_cls_score = s; best_cls = c - cls_start; }
+    }
+
+    // 关键点：输入为左上逆时针，输出重排为 BL,TL,TR,BR
+    float TLx = data[r * cols + 0];
+    float TLy = data[r * cols + 1];
+    float TRx = data[r * cols + 2];
+    float TRy = data[r * cols + 3];
+    float BRx = data[r * cols + 4];
+    float BRy = data[r * cols + 5];
+    float BLx = data[r * cols + 6];
+    float BLy = data[r * cols + 7];
+
+    // 类别名
+    std::string cls_name;
+    if (!class_names_.empty() && best_cls >= 0 && best_cls < static_cast<int>(class_names_.size())) {
+      cls_name = class_names_[best_cls];
+    } else {
+      cls_name = std::to_string(best_cls);
+    }
+
+    rm_auto_aim::ArmorDetection det;
+    det.kpts = {
+      cv::Point2f(BLx, BLy),
+      cv::Point2f(TLx, TLy),
+      cv::Point2f(TRx, TRy),
+      cv::Point2f(BRx, BRy)
+    };
+    det.class_name = std::move(cls_name);
+    det.score = confidence * std::max(0.0f, best_cls_score); // 组合分数
+    detections.emplace_back(std::move(det));
   }
 
-  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>{pyramid};
+  return 0;
+}
 
-  //初始化输出
-  dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
-  dnn_output->msg_header->set__frame_id(img_msg->header.frame_id);
-  dnn_output->msg_header->set__stamp(img_msg->header.stamp);
+void Yolo11Node::FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
+  // 1. 空消息校验
+  if (!img_msg) {
+    RCLCPP_WARN(this->get_logger(), "Empty image message");
+    return;
+  }
 
-  // Fill metadata
-  dnn_output->img_w = img_msg->width;
-  dnn_output->img_h = img_msg->height;
-  dnn_output->model_w = model_input_width_;
-  dnn_output->model_h = model_input_height_;
+  // 2. RGB图像编码校验
+  if (img_msg->encoding != std::string("rgb8")) {
+    RCLCPP_ERROR(this->get_logger(), "Unsupported encoding: %s (expect rgb8)", img_msg->encoding.c_str());
+    return;
+  }
 
-  // if (dnn_output->ratio != 1.0f) {
-  //   // optionally cache pyramid for rendering
-  //   dnn_output->pyramid = pyramid;
-  // }
+  // 3. 将ROS RGB图像转为OpenCV Mat（RGB格式）
+  cv_bridge::CvImagePtr cv_ptr;
+  try {
+    cv_ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::RGB8);
+  } catch (cv_bridge::Exception& e) {
+    RCLCPP_ERROR(this->get_logger(), "cv_bridge conversion error: %s", e.what());
+    return;
+  }
+  cv::Mat rgb_img = cv_ptr->image; // 原始RGB图像（cv::Mat，通道顺序RGB）
 
+  // 4. 核心：RGB图像尺寸转换（等比例缩放+填充到模型输入尺寸）
+  int original_h = rgb_img.rows;
+  int original_w = rgb_img.cols;
+  int target_h = model_input_height_;
+  int target_w = model_input_width_;
+
+  // 校验尺寸有效性
+  if (original_h <= 0 || original_w <= 0 || target_h <= 0 || target_w <= 0) {
+    RCLCPP_WARN(this->get_logger(), "Invalid image size: original(%dx%d), target(%dx%d)",
+                original_w, original_h, target_w, target_h);
+    return;
+  }
+
+  // 4.1 计算等比例缩放后的尺寸（保持宽高比，不拉伸）
+  auto resized = hobot::dnn_node::GetResizedImgShape(original_h, original_w, target_h, target_w);
+  int resized_h = resized.first;
+  int resized_w = resized.second;
+
+  // 4.2 执行RGB图像缩放（OpenCV原生方法，保证RGB通道不变）
+  cv::Mat resized_rgb_img;
+  cv::resize(rgb_img, resized_rgb_img, cv::Size(resized_w, resized_h), 0, 0, cv::INTER_LINEAR);
+
+  // 4.3 填充到模型输入尺寸（中心填充，补黑边，和原NV12金字塔的填充逻辑一致）
+  cv::Mat input_rgb_img(target_h, target_w, CV_8UC3, cv::Scalar(0, 0, 0)); // 初始化黑底
+  int x_offset = (target_w - resized_w) / 2;
+  int y_offset = (target_h - resized_h) / 2;
+  resized_rgb_img.copyTo(input_rgb_img(cv::Rect(x_offset, y_offset, resized_w, resized_h)));
+
+  // 5. 将RGB Mat转为地平线DNNInput（模型推理输入）
+  cv::Mat input_float_img;
+  input_rgb_img.convertTo(input_float_img, CV_32FC3); // 转为float32
+  input_float_img = input_float_img / 255.0f; // 归一化到0-1（根据模型要求调整，若模型不需要可注释）
+
+  // 5.1 构造地平线DNNInput（RGB格式，适配模型输入）
+  std::shared_ptr<hobot::dnn_node::DNNInput> dnn_input = 
+      hobot::dnn_node::ImageProc::CreateDNNInputFromMat(
+          input_float_img,                  // 处理后的RGB图像（float32）
+          hobot::dnn_node::ImageType::RGB,  // 图像类型指定为RGB
+          target_w, target_h);              // 模型输入尺寸
+
+  if (!dnn_input) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to create DNNInput from RGB image");
+    return;
+  }
+
+  // 6. 执行模型推理
+  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>{dnn_input};
+  auto dnn_output = std::make_shared<DnnOutput>(); // 用于接收推理输出
+
+  int run_ret = Run(inputs, dnn_output, nullptr, false);
+  if (run_ret != 0 && run_ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
+    RCLCPP_ERROR(this->get_logger(), "Run inference fail! ret=%d", run_ret);
+    return;
+  }
+
+  // 7. （可选）获取推理输出并验证（如需处理输出，可在此调用PostProcess）
+  RCLCPP_INFO(this->get_logger(), "Inference success! Image resized from (%dx%d) to (%dx%d)",
+              original_w, original_h, target_w, target_h);
   
-
-  if (Run(inputs, dnn_output, nullptr, false) != 0
-      && Run(inputs, dnn_output, nullptr, false) != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo11_node"), "Run inference fail!");
-  }
+  // 若需要处理推理输出，取消下面注释（调用原有PostProcess）
+  // PostProcess(dnn_output);
 }
 
 }  // namespace rm_auto_aim

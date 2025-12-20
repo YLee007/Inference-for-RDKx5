@@ -206,9 +206,11 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     // Reserve to avoid repeated allocations (typical few elements)
     armors.reserve(rm_auto_aim::armors_keypoints.size());
 
-    // Small helper to parse class name
-    auto ParseArmorName = [](const std::string &s) -> ArmorName {
-      if (s.empty()) return ArmorName::B1;
+    // Helper to derive armor type and team from class string
+    auto DeriveTypeAndTeam = [](const std::string &s, ArmorType &type_out, int &team_out) {
+      type_out = ArmorType::SMALL;
+      team_out = -1;
+      if (s.empty()) return;
       char color = 0;
       int num = 0;
       for (size_t i = 0; i < s.size(); ++i) {
@@ -225,28 +227,10 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
           break;
         }
       }
-      if (color == 0) return ArmorName::B1;
-      if (color == 'B') {
-        switch (num) {
-          case 1: return ArmorName::B1;
-          case 2: return ArmorName::B2;
-          case 3: return ArmorName::B3;
-          case 4: return ArmorName::B4;
-          case 5: return ArmorName::B5;
-          case 7: return ArmorName::B7;
-          default: return ArmorName::B1;
-        }
-      } else {
-        switch (num) {
-          case 1: return ArmorName::R1;
-          case 2: return ArmorName::R2;
-          case 3: return ArmorName::R3;
-          case 4: return ArmorName::R4;
-          case 5: return ArmorName::R5;
-          case 7: return ArmorName::R7;
-          default: return ArmorName::R1;
-        }
-      }
+      if (color == 'B') team_out = BLUE;
+      else if (color == 'R') team_out = RED;
+      // Mapping rule: number 1 is LARGE, others SMALL (domain-specific)
+      if (num == 1) type_out = ArmorType::LARGE;
     };
 
     // Iterate by non-const reference so we can move keypoint vectors (avoid copies)
@@ -267,28 +251,17 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
       cv::Rect bbox = cv::boundingRect(det.kpts);
       cv::Point2f center(bbox.x + bbox.width / 2.0f, bbox.y + bbox.height / 2.0f);
 
-      ArmorName parsed_name = ParseArmorName(det.class_name);
-      // Mapping rule: B1 and R1 are LARGE, others are SMALL
-      ArmorType atype = (parsed_name == ArmorName::B1 || parsed_name == ArmorName::R1) ? ArmorType::LARGE : ArmorType::SMALL;
-
-      // 构造 Armor 并填充新字段：armor_keypoints/score/team_id
-      armors.emplace_back(parsed_name, det.score, bbox, std::move(det.kpts), center);
-      Armor & armor = armors.back();
-      armor.type = atype;
-      armor.classification_result = det.class_name;
+      Armor armor;
+      armor.center = center;
+      armor.armor_keypoints = std::move(det.kpts);
       armor.score = det.score;
-      armor.armor_keypoints = std::move(armor.armor_keypoints); // ensure vector exists
-      // det.kpts 已 move 到 Armor 构造函数的内部容器，若你的 Armor 构造写入到 armor_keypoints，可省略；
-      // 若构造函数存的是其他字段，这里同步：
-      armor.armor_keypoints = std::move(armors.back().armor_keypoints.empty() ? std::move(armors.back().armor_keypoints) : armors.back().armor_keypoints);
-      // 颜色到 team_id: 0=BLUE,1=RED
-      int team_id = -1;
-      for (char c : det.class_name) {
-        char cu = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        if (cu == 'B') { team_id = BLUE; break; }
-        if (cu == 'R') { team_id = RED; break; }
-      }
+      armor.classification_result = det.class_name;
+      ArmorType atype;
+      int team_id;
+      DeriveTypeAndTeam(det.class_name, atype, team_id);
+      armor.type = atype;
       armor.team_id = team_id;
+      armors.emplace_back(std::move(armor));
     }
     // clear the shared buffer so next frame can write new detections
     rm_auto_aim::armors_keypoints.clear();

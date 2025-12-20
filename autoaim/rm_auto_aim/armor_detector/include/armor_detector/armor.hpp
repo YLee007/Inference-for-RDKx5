@@ -10,6 +10,7 @@
 // STL
 #include <algorithm>
 #include <string>
+#include <vector>
 
 namespace rm_auto_aim
 {
@@ -36,42 +37,48 @@ struct Light : public cv::Rect
   double length;
   double width;
   float tilt_angle;
-  // 灯条的置信度与可选跟踪ID
-  float score = 0.0f;
-  int id = -1;
 };
 
 struct Armor
 {
-  Armor() = default;
-  Armor(const Light & l1, const Light & l2)
-  {
-    if (l1.center.x < l2.center.x) {
-      left_light = l1, right_light = l2;
-    } else {
-      left_light = l2, right_light = l1;
-    }
-    center = (left_light.center + right_light.center) / 2;
-  }
+  // 基本标识
+  std::string number;        // 兼容旧字段，不强制使用
 
-  // Light pairs part
+  // 几何属性
+  cv::Point2f center;        // 由关键点/包围框计算的图像中心
+  cv::Point2f center_norm;   // 归一化中心（可选，若未使用可忽略）
+  ArmorType type;            // SMALL / LARGE
+  cv::Rect bbox;             // 由关键点计算的外接矩形
+  std::vector<cv::Point2f> armor_keypoints; // PnP 期望顺序：BL, TL, TR, BR
+  cv::Point2f offset_;       
+
+  // 分类/置信
+  float score;                       // 后处理的最终分数 obj×cls
+  std::string classification_result; // 完整类别字符串（如 "B3"、"R5" 或 "G/Bs/Bb"）
+  int team_id = -1;                  // 0 = blue, 1 = red, -1 = unknown
+
+  // 可选：旧 Light 方案兼容（不强制填充）
   Light left_light, right_light;
-  cv::Point2f center;
-  ArmorType type;
-  // 关键点（按 BL, TL, TR, BR 顺序）与综合分数、队伍颜色
-  std::vector<cv::Point2f> armor_keypoints;
-  float score = 0.0f;
-  int team_id = BLUE;  // RED/BLUE，与后处理颜色判定一致
-
-  // Number part
   cv::Mat number_img;
-  std::string number;
-  float confidence;
-  // 统一命名：分类结果（如 R1/B3/G/O/Bs/Bb）
-  std::string classification_result;
+
+    Armor() = default;
+    Armor(float score,
+      const cv::Rect & bbox,
+      std::vector<cv::Point2f> armor_keypoints,
+      const cv::Point2f & center)
+    : number(),
+    center(center),
+    center_norm(),
+    type(ArmorType::INVALID),
+    bbox(bbox),
+    armor_keypoints(std::move(armor_keypoints)),
+    offset_(),
+    score(score),
+    classification_result(),
+    team_id(-1)
+  {}
 };
 
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__ARMOR_HPP_
-
