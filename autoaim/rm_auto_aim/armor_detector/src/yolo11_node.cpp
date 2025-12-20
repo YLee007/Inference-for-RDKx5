@@ -413,28 +413,22 @@ void Yolo11Node::FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg) 
   int y_offset = (target_h - resized_h) / 2;
   resized_rgb_img.copyTo(input_rgb_img(cv::Rect(x_offset, y_offset, resized_w, resized_h)));
 
-  // 5. 将RGB Mat转为地平线DNNInput（模型推理输入）
-  cv::Mat input_float_img;
-  input_rgb_img.convertTo(input_float_img, CV_32FC3); // 转为float32
-  input_float_img = input_float_img / 255.0f; // 归一化到0-1（根据模型要求调整，若模型不需要可注释）
+  // 5. 将RGB Mat转为地平线DNNTensor（模型推理输入）
+  float ratio = 1.0f;
+  hbDNNTensorProperties tensor_properties; 
+  auto dnn_tensor = hobot::dnn_node::ImageProc::GetBGRTensorFromBGRImg(
+      input_rgb_img, target_h, target_w, tensor_properties, ratio, hobot::dnn_node::ImageType::RGB, true, false, false);
 
-  // 5.1 构造地平线DNNInput（RGB格式，适配模型输入）
-  std::shared_ptr<hobot::dnn_node::DNNInput> dnn_input = 
-      hobot::dnn_node::ImageProc::CreateDNNInputFromMat(
-          input_float_img,                  // 处理后的RGB图像（float32）
-          hobot::dnn_node::ImageType::RGB,  // 图像类型指定为RGB
-          target_w, target_h);              // 模型输入尺寸
-
-  if (!dnn_input) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to create DNNInput from RGB image");
+  if (!dnn_tensor) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to create DNNTensor from RGB image");
     return;
   }
 
   // 6. 执行模型推理
-  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>{dnn_input};
+  std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>> inputs{dnn_tensor};
   auto dnn_output = std::make_shared<DnnOutput>(); // 用于接收推理输出
 
-  int run_ret = Run(inputs, dnn_output, nullptr, false);
+  int run_ret = Run(inputs, dnn_output, false);
   if (run_ret != 0 && run_ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(this->get_logger(), "Run inference fail! ret=%d", run_ret);
     return;

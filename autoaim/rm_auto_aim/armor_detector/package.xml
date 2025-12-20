@@ -20,7 +20,7 @@
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>message_filters</depend>
-  <depend>cv_bridge</depend>
+  <!-- <depend>cv_bridge</depend> 移除重复声明，只保留 build/exec_depend -->
   <build_depend>cv_bridge</build_depend>
   <exec_depend>cv_bridge</exec_depend>
   <depend>image_transport</depend>
