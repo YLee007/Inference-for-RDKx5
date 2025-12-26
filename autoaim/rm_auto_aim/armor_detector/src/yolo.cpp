@@ -329,8 +329,8 @@ void YoloNode::FeedImg(
   };
 
   // 根据图像编码格式选择处理方式
-  if (img_msg->encoding == "rgb8") {
-    // RGB8 格式处理：使用 letterbox resize
+  if (img_msg->encoding == "bgr8") {
+    // BGR8 格式处理：使用 letterbox resize
     auto cv_img =
         cv_bridge::cvtColorForDisplay(cv_bridge::toCvShare(img_msg), "bgr8");
 
