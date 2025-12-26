@@ -27,10 +27,6 @@
     use_shared_memory: false
     detect_color: 0
     binary_thres: 78
-
-    # YOLO parser config file (relative to repo root or absolute). Used by YoloNode when launched.
-    config_file: "autoaim/model/yolov11workconfig.json"
-
     light.min_ratio: 0.1
     armor.min_light_ratio: 0.8
 
@@ -73,12 +69,12 @@
 /yolo_node:
   ros__parameters:
     image_topic: "/image_raw"
-    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/final.bin"
-    model_name: "yolov5_armor"
+    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_bgr.bin"
+    model_name: "yolov5_bgr"
     task_num: 4
     score_threshold: 0.65
     nms_threshold: 0.45
-    detect_color: -1
+    detect_color: 1
 
 
 # /rm_auto_record:
