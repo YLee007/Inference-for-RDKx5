@@ -136,10 +136,28 @@ int YoloNode::PostProcess(
   int nd = tensor->properties.validShape.numDimensions;
   const auto *dim = tensor->properties.validShape.dimensionSize;
   int rows = 0, cols = 0;
-  if (nd == 3) { rows = static_cast<int>(dim[1]); cols = static_cast<int>(dim[2]); }
-  else if (nd == 2) { rows = static_cast<int>(dim[0]); cols = static_cast<int>(dim[1]); }
-  else if (nd == 4) { rows = static_cast<int>(dim[2]); cols = static_cast<int>(dim[3]); }
-  else { RCLCPP_ERROR(this->get_logger(), "Unsupported tensor dims: %d", nd); return -1; }
+  if (nd == 3) {
+    rows = static_cast<int>(dim[1]);
+    cols = static_cast<int>(dim[2]);
+  } else if (nd == 2) {
+    rows = static_cast<int>(dim[0]);
+    cols = static_cast<int>(dim[1]);
+  } else if (nd == 4) {
+    // 兼容 [1, 25200, 22, 1]（hobot 默认）和 [1, 1, 25200, 22] 等常见排列
+    if (dim[0] == 1 && dim[3] == 1) {
+      rows = static_cast<int>(dim[1]);
+      cols = static_cast<int>(dim[2]);
+    } else if (dim[0] == 1 && dim[1] == 1) {
+      rows = static_cast<int>(dim[2]);
+      cols = static_cast<int>(dim[3]);
+    } else {
+      rows = static_cast<int>(dim[2]);
+      cols = static_cast<int>(dim[3]);
+    }
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Unsupported tensor dims: %d", nd);
+    return -1;
+  }
   if (cols < 22) { RCLCPP_ERROR(this->get_logger(), "Expect >=22 columns, got %d", cols); return -1; }
 
   auto *data = tensor->GetTensorData<float>();

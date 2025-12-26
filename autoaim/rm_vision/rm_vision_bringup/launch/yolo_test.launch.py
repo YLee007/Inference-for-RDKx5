@@ -37,7 +37,7 @@ def generate_launch_description():
                     package='armor_detector',
                     plugin='rm_auto_aim::YoloNode',
                     name='yolo_node',
-                    parameters=[node_params, {'model_file': _resolve_model_file()}],
+                    parameters=[node_params],
                     extra_arguments=[{'use_intra_process_comms': True}]
                 ),
                 ComposableNode(
