@@ -94,22 +94,11 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       cam_info_sub_.reset();
     });
 
-  // 根据相机的共享内存设置决定订阅哪种图像话题
-  bool use_shared_memory = this->declare_parameter("use_shared_memory", false);
-  
-  if (use_shared_memory) {
-    // 订阅共享内存图像
-    hbmem_img_sub_ = this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
-      "/hbmem_img", rclcpp::SensorDataQoS(),
-      std::bind(&ArmorDetectorNode::hbmemImageCallback, this, std::placeholders::_1));
-    RCLCPP_INFO(this->get_logger(), "Subscribing to shared memory image: /hbmem_img");
-  } else {
-    // 订阅常规图像
-    regular_img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "/hik_camera/image_raw", rclcpp::SensorDataQoS(),
-      std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
-    RCLCPP_INFO(this->get_logger(), "Subscribing to regular image: /hik_camera/image_raw");
-  }
+  // 订阅常规图像
+  regular_img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+    "/hik_camera/image_raw", rclcpp::SensorDataQoS(),
+    std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+  RCLCPP_INFO(this->get_logger(), "Subscribing to regular image: /hik_camera/image_raw");
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
@@ -121,22 +110,6 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
   } else {
     is_aim_task_ = false;
   }
-}
-
-void ArmorDetectorNode::hbmemImageCallback(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr hbmem_msg)
-{
-  auto img_msg = std::make_shared<sensor_msgs::msg::Image>();
-  img_msg->header.stamp = hbmem_msg->time_stamp;
-  img_msg->header.frame_id = "camera_optical_frame";
-  img_msg->height = hbmem_msg->height;
-  img_msg->width = hbmem_msg->width;
-  img_msg->encoding = "nv12";
-  img_msg->is_bigendian = false;
-  img_msg->step = hbmem_msg->step;
-  img_msg->data.assign(
-    hbmem_msg->data.begin(),
-    hbmem_msg->data.begin() + hbmem_msg->data_size);
-  imageCallback(img_msg);
 }
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)

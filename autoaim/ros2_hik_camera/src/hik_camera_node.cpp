@@ -8,10 +8,6 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
-#ifdef SHARED_MEM_ENABLED
-#include "hbm_img_msgs/msg/hbm_msg1080_p.hpp"
-#endif
-
 namespace hik_camera
 {
 class HikCameraNode : public rclcpp::Node
@@ -37,37 +33,18 @@ public:
 
     MV_CC_OpenDevice(camera_handle_);
 
-    // Get camera info
+    // Get camera infomation
     MV_CC_GetImageInfo(camera_handle_, &img_info_);
     image_msg_.data.reserve(img_info_.nHeightMax * img_info_.nWidthMax * 3);
 
     // Init convert param
     convert_param_.nWidth = img_info_.nWidthValue;
     convert_param_.nHeight = img_info_.nHeightValue;
-    convert_param_.enDstPixelType = PixelType_Gvsp_NV12;
+    convert_param_.enDstPixelType = PixelType_Gvsp_RGB8_Packed;
 
     bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", true);
     auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
-
-#ifdef SHARED_MEM_ENABLED
-    use_shared_mem_ = this->declare_parameter("use_shared_memory", false);
-    if (use_shared_mem_) {
-      // 创建共享内存发布器和独立的相机信息发布器
-      sharedmem_pub_ = this->create_publisher<hbm_img_msgs::msg::HbmMsg1080P>(
-        "/hbmem_img", 10);
-      camera_info_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(
-          "camera_info", rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos)));
-      RCLCPP_INFO(this->get_logger(), "Publishing using shared memory only");
-    } else {
-      // 只创建常规图像发布器（包含图像和相机信息）
-      camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
-      RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic only");
-    }
-#else
-    // 编译时未启用共享内存，只创建常规发布器
     camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
-    RCLCPP_INFO(this->get_logger(), "Publishing using regular image_raw topic (shared memory disabled)");
-#endif
 
     declareParameters();
 
@@ -95,12 +72,11 @@ public:
       RCLCPP_INFO(this->get_logger(), "Publishing image!");
 
       image_msg_.header.frame_id = "camera_optical_frame";
-      image_msg_.encoding = "nv12";  // 这里改为NV12
+      image_msg_.encoding = "rgb8";
 
       while (rclcpp::ok()) {
         nRet = MV_CC_GetImageBuffer(camera_handle_, &out_frame, 1000);
         if (MV_OK == nRet) {
-          // Convert image to NV12
           convert_param_.pDstBuffer = image_msg_.data.data();
           convert_param_.nDstBufferSize = image_msg_.data.size();
           convert_param_.pSrcData = out_frame.pBufAddr;
@@ -112,58 +88,11 @@ public:
           image_msg_.header.stamp = this->now();
           image_msg_.height = out_frame.stFrameInfo.nHeight;
           image_msg_.width = out_frame.stFrameInfo.nWidth;
-          image_msg_.step = out_frame.stFrameInfo.nWidth;
-          image_msg_.data.resize(out_frame.stFrameInfo.nHeight * out_frame.stFrameInfo.nWidth * 3 / 2);  // NV12的图像大小
+          image_msg_.step = out_frame.stFrameInfo.nWidth * 3;
+          image_msg_.data.resize(image_msg_.width * image_msg_.height * 3);
 
           camera_info_msg_.header = image_msg_.header;
-
-#ifdef SHARED_MEM_ENABLED
-          if (sharedmem_pub_ && use_shared_mem_) {
-            // 发布共享内存图像
-            auto shared_msg = std::make_unique<hbm_img_msgs::msg::HbmMsg1080P>();
-            
-            shared_msg->time_stamp = this->get_clock()->now();
-            
-            // 设置图像基本信息
-            shared_msg->index = 0;  // 可以根据需要设置索引
-            shared_msg->height = out_frame.stFrameInfo.nHeight;
-            shared_msg->width = out_frame.stFrameInfo.nWidth;
-            shared_msg->step = out_frame.stFrameInfo.nWidth;
-            shared_msg->data_size = out_frame.stFrameInfo.nFrameLen;
-            
-            // 设置编码格式为 NV12
-            std::string encoding_str = "nv12";
-            if (encoding_str.size() < shared_msg->encoding.size()) {
-                std::copy(encoding_str.begin(), encoding_str.end(), shared_msg->encoding.begin());
-                // 剩余部分填充0
-                std::fill(shared_msg->encoding.begin() + encoding_str.size(), 
-                         shared_msg->encoding.end(), 0);
-            } else {
-                // 截断处理
-                std::copy(encoding_str.begin(), 
-                         encoding_str.begin() + shared_msg->encoding.size(), 
-                         shared_msg->encoding.begin());
-            }
-            
-            // 复制图像数据
-            size_t copy_size = std::min(static_cast<size_t>(out_frame.stFrameInfo.nFrameLen), 
-                                       static_cast<size_t>(shared_msg->MAX_SIZE));
-            std::copy_n(static_cast<uint8_t*>(out_frame.pBufAddr), 
-                       copy_size, shared_msg->data.begin());
-            
-            sharedmem_pub_->publish(std::move(shared_msg));
-            
-            // 同时发布相机信息（重要！）
-            camera_info_msg_.header.stamp = this->now();
-            camera_info_pub_->publish(camera_info_msg_);
-          } 
-          else {
-            // 发布常规图像和相机信息
-            camera_pub_.publish(image_msg_, camera_info_msg_);
-          }
-#else
           camera_pub_.publish(image_msg_, camera_info_msg_);
-#endif
 
           MV_CC_FreeImageBuffer(camera_handle_, &out_frame);
           fail_conut_ = 0;
@@ -265,12 +194,6 @@ private:
   std::thread capture_thread_;
 
   OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
-
-#ifdef SHARED_MEM_ENABLED
-  rclcpp::Publisher<hbm_img_msgs::msg::HbmMsg1080P>::SharedPtr sharedmem_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub_;
-  bool use_shared_mem_ = false;
-#endif
 };
 }  // namespace hik_camera
 

@@ -7,6 +7,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "dnn/hb_dnn.h"
 
 #include "dnn_node/dnn_node.h"
 #include "armor_detector/armors_shared.hpp"
@@ -32,8 +33,6 @@ struct DnnOutput : public hobot::dnn_node::DnnNodeOutput {
   // letterbox/resize 偏移
   float x_offset = 0.0f;
   float y_offset = 0.0f;
-  // 缓存用于本地渲染的 pyramid
-  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
 };
 
 class YoloNode : public hobot::dnn_node::DnnNode {
@@ -56,6 +55,8 @@ class YoloNode : public hobot::dnn_node::DnnNode {
   float score_threshold_ = 0.65f;
   float nms_threshold_ = 0.45f;
   int detect_color_ = -1;
+  hbDNNTensorProperties input_properties_{};
+  bool has_input_properties_ = false;
 
   // 图片订阅
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;

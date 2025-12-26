@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 #include "dnn_node/util/image_proc.h"
-#include "hobot_cv/hobotcv_imgproc.h"
 #include "rclcpp_components/register_node_macro.hpp"
 
 namespace rm_auto_aim {
@@ -49,6 +48,20 @@ YoloNode::YoloNode(const std::string &node_name,
   } else {
     RCLCPP_INFO(this->get_logger(), "Model input size %dx%d",
                 model_input_width_, model_input_height_);
+    auto *model = this->GetModel();
+    if (model && model->GetInputTensorProperties(input_properties_, 0) == 0) {
+      has_input_properties_ = true;
+      RCLCPP_INFO(this->get_logger(),
+                  "Input layout=%d type=%d dims=[%d,%d,%d,%d]",
+                  input_properties_.tensorLayout,
+                  input_properties_.tensorType,
+                  input_properties_.validShape.dimensionSize[0],
+                  input_properties_.validShape.dimensionSize[1],
+                  input_properties_.validShape.dimensionSize[2],
+                  input_properties_.validShape.dimensionSize[3]);
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "GetInputTensorProperties failed");
+    }
   }
 
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
@@ -235,51 +248,6 @@ int YoloNode::PostProcess(
   return 0;
 }
 
-// 使用 hobotcv 对 NV12 图片做等比例 resize（保留宽高比），并返回 resized NV12 图片（存于 out_img）和 ratio
-static int ResizeNV12Img(const char *in_img_data,
-                  const int &in_img_height,
-                  const int &in_img_width,
-                  int &resized_img_height,
-                  int &resized_img_width,
-                  const int &scaled_img_height,
-                  const int &scaled_img_width,
-                  cv::Mat &out_img,
-                  float &ratio) {
-  cv::Mat src(
-      in_img_height * 3 / 2, in_img_width, CV_8UC1, (void *)(in_img_data));
-  float ratio_w =
-      static_cast<float>(in_img_width) / static_cast<float>(scaled_img_width);
-  float ratio_h =
-      static_cast<float>(in_img_height) / static_cast<float>(scaled_img_height);
-  float dst_ratio = std::max(ratio_w, ratio_h);
-  int resized_width, resized_height;
-  if (dst_ratio == ratio_w) {
-    resized_width = scaled_img_width;
-    resized_height = static_cast<float>(in_img_height) / dst_ratio;
-  } else if (dst_ratio == ratio_h) {
-    resized_width = static_cast<float>(in_img_width) / dst_ratio;
-    resized_height = scaled_img_height;
-  }
-  // hobot_cv要求输出宽度为16的倍数
-  int remain = resized_width % 16;
-  if (remain != 0) {
-    //向下取16倍数，重新计算缩放系数
-    resized_width -= remain;
-    dst_ratio = static_cast<float>(in_img_width) / resized_width;
-    resized_height = static_cast<float>(in_img_height) / dst_ratio;
-  }
-  //高度向下取偶数
-  resized_height =
-      resized_height % 2 == 0 ? resized_height : resized_height - 1;
-  ratio = dst_ratio;
-
-  resized_img_height = resized_height;
-  resized_img_width = resized_width;
-
-  return hobot_cv::hobotcv_resize(
-      src, in_img_height, in_img_width, out_img, resized_height, resized_width);
-}
-
 int YoloNode::SetNodePara() {
   RCLCPP_INFO(this->get_logger(), "YoloNode::SetNodePara()");
   if (!dnn_node_para_ptr_) {
@@ -322,7 +290,12 @@ void YoloNode::FeedImg(
 
   auto dnn_output = std::make_shared<DnnOutput>();
 
-  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
+  if (!has_input_properties_) {
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Input tensor properties not ready");
+    return;
+  }
+
+  std::shared_ptr<hobot::dnn_node::DNNTensor> input_tensor = nullptr;
 
   // Letterbox resize 函数
   auto letterbox_resize = [](const cv::Mat& img, int target_w, int target_h, 
@@ -384,73 +357,30 @@ void YoloNode::FeedImg(
                  model_input_width_, model_input_height_,
                  scale, x_offset, y_offset, dnn_output->ratio);
 
-    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromBGRImg(
-        letterbox_img, model_input_height_, model_input_width_);
-    
-  } else if (img_msg->encoding == "nv12") {
-    // NV12 格式处理：如果输入尺寸和模型输入不一致，先用 hobotcv 做等比例 resize（保留宽高比）
-    if (static_cast<int>(img_msg->height) != model_input_height_ ||
-        static_cast<int>(img_msg->width) != model_input_width_) {
-    cv::Mat out_img;
-     float ratio = 1.0f;
-     int out_h = 0, out_w = 0;
-    int ret = ResizeNV12Img(reinterpret_cast<const char *>(img_msg->data.data()),
-                            img_msg->height,
-                            img_msg->width,
-                            out_h,
-                            out_w,
-                            model_input_height_,
-                            model_input_width_,
-                            out_img,
-                            ratio);
-    if (ret < 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Resize nv12 img fail");
-      return;
-    }
-
-    // hobotcv 返回的 out_img 为 NV12 存储在 Mat 中，height = H', width = W'
-    // 对于 NV12，实际像素高度为 rows * 2 / 3（因为 Mat 存储 Y + UV）
-    int out_img_width = out_img.cols;
-    int out_img_height = out_img.rows * 2 / 3;
-
-    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
-        reinterpret_cast<const char *>(out_img.data),
-        out_img_height,
-        out_img_width,
+    float tensor_ratio = 1.0f;
+    input_tensor = hobot::dnn_node::ImageProc::GetBGRTensorFromBGRImg(
+        letterbox_img,
         model_input_height_,
-        model_input_width_);
-
-    dnn_output->ratio = ratio;
-    dnn_output->resized_w = out_img_width;
-    dnn_output->resized_h = out_img_height;
-    dnn_output->x_offset = 0.0f;
-    dnn_output->y_offset = 0.0f;
-    } else {
-      // 直接构造 pyramid
-      pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
-          reinterpret_cast<const char *>(img_msg->data.data()),
-          img_msg->height,
-          img_msg->width,
-          model_input_height_,
-          model_input_width_);
-      dnn_output->ratio = 1.0f;
-      dnn_output->resized_w = img_msg->width;
-      dnn_output->resized_h = img_msg->height;
-      dnn_output->x_offset = 0.0f;
-      dnn_output->y_offset = 0.0f;
-    }
+        model_input_width_,
+        input_properties_,
+        tensor_ratio,
+        hobot::dnn_node::ImageType::BGR,
+        false,
+        false,
+        false);
+    
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), 
                  "Unsupported image encoding: %s", img_msg->encoding.c_str());
     return;
   }
 
-  if (!pyramid) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Get pyramid fail");
+  if (!input_tensor) {
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Get input tensor fail");
     return;
   }
 
-  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNInput>>{pyramid};
+  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
 
   //初始化输出
   dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
@@ -463,15 +393,10 @@ void YoloNode::FeedImg(
   dnn_output->model_w = model_input_width_;
   dnn_output->model_h = model_input_height_;
 
-  // if (dnn_output->ratio != 1.0f) {
-  //   // optionally cache pyramid for rendering
-  //   dnn_output->pyramid = pyramid;
-  // }
-
   
 
-  if (Run(inputs, dnn_output, nullptr, false) != 0
-      && Run(inputs, dnn_output, nullptr, false) != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
+  int ret = Run(inputs, dnn_output, false);
+  if (ret != 0 && ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
   }
 }
