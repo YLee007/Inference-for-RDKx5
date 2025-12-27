@@ -12,6 +12,7 @@
 #include "dnn_node/dnn_node.h"
 #include "armor_detector/armors_shared.hpp"
 #include <sensor_msgs/msg/image.hpp>
+#include <opencv2/core/mat.hpp>
 
 namespace rm_auto_aim {
 
@@ -61,6 +62,15 @@ class YoloNode : public hobot::dnn_node::DnnNode {
   // 图片订阅
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
   void FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+
+  void ProcessImage(const cv::Mat &image, const std_msgs::msg::Header &header);
+  void UpdateFps();
+
+  bool use_image_file_ = false;
+  std::string image_file_path_;
+  bool enable_fps_logging_ = false;
+  rclcpp::Time last_frame_time_;
+  bool has_last_frame_time_ = false;
 };
 
 }  // namespace rm_auto_aim

@@ -1,6 +1,8 @@
 #include "armor_detector/yolo.hpp"
 #include "armor_detector/armors_shared.hpp"
 #include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <cv_bridge/cv_bridge.h>
 
 #include <algorithm>
@@ -32,10 +34,16 @@ YoloNode::YoloNode(const std::string &node_name,
   this->declare_parameter<double>("score_threshold", 0.65);
   this->declare_parameter<double>("nms_threshold", 0.45);
   this->declare_parameter<int>("detect_color", -1);
+  this->declare_parameter<bool>("use_image_file", false);
+  this->declare_parameter<std::string>("image_file_path", "");
+  this->declare_parameter<bool>("enable_fps_logging", false);
 
   std::string image_topic;
   this->get_parameter("image_topic", image_topic);
   this->get_parameter("detect_color", detect_color_);
+  this->get_parameter("use_image_file", use_image_file_);
+  this->get_parameter("image_file_path", image_file_path_);
+  this->get_parameter("enable_fps_logging", enable_fps_logging_);
 
   if (Init() != 0) {
     throw std::runtime_error("YoloNode init failed");
@@ -64,11 +72,26 @@ YoloNode::YoloNode(const std::string &node_name,
     }
   }
 
-  img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      image_topic, rclcpp::SensorDataQoS(),
-      std::bind(&YoloNode::FeedImg, this, _1));
-  RCLCPP_INFO(this->get_logger(), "Subscribed image topic: %s",
-              image_topic.c_str());
+  if (use_image_file_) {
+    RCLCPP_INFO(this->get_logger(), "Using image file for inference: %s",
+                image_file_path_.c_str());
+    cv::Mat image = cv::imread(image_file_path_, cv::IMREAD_COLOR);
+    if (image.empty()) {
+      RCLCPP_ERROR(this->get_logger(), "Failed to read image file: %s",
+                   image_file_path_.c_str());
+    } else {
+      std_msgs::msg::Header header;
+      header.frame_id = "image_file";
+      header.stamp = this->now();
+      ProcessImage(image, header);
+    }
+  } else {
+    img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        image_topic, rclcpp::SensorDataQoS(),
+        std::bind(&YoloNode::FeedImg, this, _1));
+    RCLCPP_INFO(this->get_logger(), "Subscribed image topic: %s",
+                image_topic.c_str());
+  }
 }
 
 int YoloNode::PostProcess(
@@ -306,117 +329,123 @@ void YoloNode::FeedImg(
     return;
   }
 
-  auto dnn_output = std::make_shared<DnnOutput>();
-
-  if (!has_input_properties_) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Input tensor properties not ready");
+  if (use_image_file_) {
+    RCLCPP_DEBUG(this->get_logger(),
+                 "Image file mode enabled, skip subscribed frame");
     return;
   }
 
-  std::shared_ptr<hobot::dnn_node::DNNTensor> input_tensor = nullptr;
-
-  // Letterbox resize 函数
-  auto letterbox_resize = [](const cv::Mat& img, int target_w, int target_h, 
-                            float& scale, int& x_offset, int& y_offset) -> cv::Mat {
-    int img_w = img.cols;
-    int img_h = img.rows;
-    
-    // 计算缩放比例（保持宽高比）
-    scale = std::min(static_cast<float>(target_w) / img_w, 
-                     static_cast<float>(target_h) / img_h);
-    
-    // 计算缩放后的尺寸
-    int new_w = static_cast<int>(img_w * scale);
-    int new_h = static_cast<int>(img_h * scale);
-    
-    // resize 图像
-    cv::Mat resized;
-    cv::resize(img, resized, cv::Size(new_w, new_h));
-    
-    // 创建目标尺寸的画布并填充灰色
-    cv::Mat letterbox_img(target_h, target_w, img.type(), cv::Scalar(114, 114, 114));
-    
-    // 计算居中位置
-    x_offset = (target_w - new_w) / 2;
-    y_offset = (target_h - new_h) / 2;
-    
-    // 将 resize 后的图像放到画布中心
-    resized.copyTo(letterbox_img(cv::Rect(x_offset, y_offset, new_w, new_h)));
-    
-    return letterbox_img;
-  };
-
-  // 根据图像编码格式选择处理方式
-  if (img_msg->encoding == "bgr8") {
-    // BGR8 格式处理：使用 letterbox resize
-    auto cv_img =
-        cv_bridge::cvtColorForDisplay(cv_bridge::toCvShare(img_msg), "bgr8");
-
-    // 应用 letterbox resize
-    float scale;
-    int x_offset, y_offset;
-    cv::Mat letterbox_img = letterbox_resize(cv_img->image, model_input_width_, model_input_height_,
-                                           scale, x_offset, y_offset);
-
-    // 设置输出参数
-    dnn_output->ratio = 1.0f / scale;  // 用于坐标映射的缩放比例
-    dnn_output->resized_w = model_input_width_;
-    dnn_output->resized_h = model_input_height_;
-    
-    // 记录 letterbox 偏移量（需要在 PostProcess 中使用）
-    dnn_output->img_w = cv_img->image.cols;  // 原图宽度
-    dnn_output->img_h = cv_img->image.rows;  // 原图高度
-    dnn_output->x_offset = static_cast<float>(x_offset);
-    dnn_output->y_offset = static_cast<float>(y_offset);
-
-    RCLCPP_DEBUG(this->get_logger(), 
-                 "Letterbox: input=%dx%d, model=%dx%d, scale=%.3f, offset=(%d,%d), ratio=%.3f",
-                 cv_img->image.cols, cv_img->image.rows,
-                 model_input_width_, model_input_height_,
-                 scale, x_offset, y_offset, dnn_output->ratio);
-
-    float tensor_ratio = 1.0f;
-    input_tensor = hobot::dnn_node::ImageProc::GetBGRTensorFromBGRImg(
-        letterbox_img,
-        model_input_height_,
-        model_input_width_,
-        input_properties_,
-        tensor_ratio,
-        hobot::dnn_node::ImageType::BGR,
-        false,
-        false,
-        false);
-    
-  } else {
+  if (img_msg->encoding != "bgr8") {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), 
                  "Unsupported image encoding: %s", img_msg->encoding.c_str());
     return;
   }
+
+  auto cv_img =
+      cv_bridge::cvtColorForDisplay(cv_bridge::toCvShare(img_msg), "bgr8");
+
+  ProcessImage(cv_img->image, img_msg->header);
+}
+
+void YoloNode::ProcessImage(const cv::Mat &image,
+                            const std_msgs::msg::Header &header) {
+  if (!has_input_properties_) {
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"),
+                 "Input tensor properties not ready");
+    return;
+  }
+
+  auto dnn_output = std::make_shared<DnnOutput>();
+
+  std::shared_ptr<hobot::dnn_node::DNNTensor> input_tensor = nullptr;
+
+  auto letterbox_resize = [](const cv::Mat &img, int target_w, int target_h,
+                             float &scale, int &x_offset,
+                             int &y_offset) -> cv::Mat {
+    int img_w = img.cols;
+    int img_h = img.rows;
+
+    scale = std::min(static_cast<float>(target_w) / img_w,
+                     static_cast<float>(target_h) / img_h);
+
+    int new_w = static_cast<int>(img_w * scale);
+    int new_h = static_cast<int>(img_h * scale);
+
+    cv::Mat resized;
+    cv::resize(img, resized, cv::Size(new_w, new_h));
+
+    cv::Mat letterbox_img(target_h, target_w, img.type(),
+                          cv::Scalar(114, 114, 114));
+
+    x_offset = (target_w - new_w) / 2;
+    y_offset = (target_h - new_h) / 2;
+
+    resized.copyTo(letterbox_img(cv::Rect(x_offset, y_offset, new_w, new_h)));
+
+    return letterbox_img;
+  };
+
+  float scale;
+  int x_offset, y_offset;
+  cv::Mat letterbox_img =
+      letterbox_resize(image, model_input_width_, model_input_height_, scale,
+                       x_offset, y_offset);
+
+  dnn_output->ratio = 1.0f / scale;
+  dnn_output->resized_w = model_input_width_;
+  dnn_output->resized_h = model_input_height_;
+  dnn_output->img_w = image.cols;
+  dnn_output->img_h = image.rows;
+  dnn_output->x_offset = static_cast<float>(x_offset);
+  dnn_output->y_offset = static_cast<float>(y_offset);
+
+  RCLCPP_DEBUG(this->get_logger(),
+               "Letterbox: input=%dx%d, model=%dx%d, scale=%.3f, offset=(%d,%d), ratio=%.3f",
+               image.cols, image.rows, model_input_width_, model_input_height_,
+               scale, x_offset, y_offset, dnn_output->ratio);
+
+  float tensor_ratio = 1.0f;
+  input_tensor = hobot::dnn_node::ImageProc::GetBGRTensorFromBGRImg(
+      letterbox_img, model_input_height_, model_input_width_, input_properties_,
+      tensor_ratio, hobot::dnn_node::ImageType::BGR, false, false, false);
 
   if (!input_tensor) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Get input tensor fail");
     return;
   }
 
-  auto inputs = std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
+  auto inputs =
+      std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
 
-  //初始化输出
-  dnn_output->msg_header = std::make_shared<std_msgs::msg::Header>();
-  dnn_output->msg_header->set__frame_id(img_msg->header.frame_id);
-  dnn_output->msg_header->set__stamp(img_msg->header.stamp);
+  dnn_output->msg_header =
+      std::make_shared<std_msgs::msg::Header>(header);
 
-  // Fill metadata
-  dnn_output->img_w = img_msg->width;
-  dnn_output->img_h = img_msg->height;
   dnn_output->model_w = model_input_width_;
   dnn_output->model_h = model_input_height_;
-
-  
 
   int ret = Run(inputs, dnn_output, false);
   if (ret != 0 && ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
+    return;
   }
+
+  UpdateFps();
+}
+
+void YoloNode::UpdateFps() {
+  if (!enable_fps_logging_) {
+    return;
+  }
+  auto now = this->now();
+  if (has_last_frame_time_) {
+    double dt = (now - last_frame_time_).seconds();
+    if (dt > 0.0) {
+      double fps = 1.0 / dt;
+      RCLCPP_INFO(this->get_logger(), "Current FPS: %.2f", fps);
+    }
+  }
+  last_frame_time_ = now;
+  has_last_frame_time_ = true;
 }
 
 }  // namespace rm_auto_aim
