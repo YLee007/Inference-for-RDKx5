@@ -12,6 +12,9 @@ def generate_launch_description():
     from common import node_params
     from launch_ros.descriptions import ComposableNode
     from launch_ros.actions import ComposableNodeContainer
+    from launch.actions import DeclareLaunchArgument
+    from launch.substitutions import LaunchConfiguration
+    from launch.conditions import UnlessCondition
     from launch import LaunchDescription
 
     def get_camera_node(package, plugin):
@@ -23,7 +26,12 @@ def generate_launch_description():
             extra_arguments=[{'use_intra_process_comms': True}]
         )
 
+    use_image_file = LaunchConfiguration('use_image_file')
+    image_file_path = LaunchConfiguration('image_file_path')
+    enable_fps_logging = LaunchConfiguration('enable_fps_logging')
+
     hik_camera_node = get_camera_node('hik_camera', 'hik_camera::HikCameraNode')
+    hik_camera_node.condition = UnlessCondition(use_image_file)
 
     # Test container with camera, YOLO detector, and armor detector only
     yolo_test_container = ComposableNodeContainer(
@@ -37,7 +45,11 @@ def generate_launch_description():
                     package='armor_detector',
                     plugin='rm_auto_aim::YoloNode',
                     name='yolo_node',
-                    parameters=[node_params],
+                    parameters=[node_params, {
+                        'use_image_file': use_image_file,
+                        'image_file_path': image_file_path,
+                        'enable_fps_logging': enable_fps_logging,
+                    }],
                     extra_arguments=[{'use_intra_process_comms': True}]
                 ),
                 ComposableNode(
@@ -53,5 +65,11 @@ def generate_launch_description():
         )
 
     return LaunchDescription([
+        DeclareLaunchArgument('use_image_file', default_value='false',
+                              description='Use folder images instead of camera'),
+        DeclareLaunchArgument('image_file_path', default_value='/home/sunrise/dateset',
+                              description='Folder path for offline images'),
+        DeclareLaunchArgument('enable_fps_logging', default_value='false',
+                              description='Enable FPS logging when using folder images'),
         yolo_test_container,
     ])

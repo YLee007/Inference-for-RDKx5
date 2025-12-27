@@ -29,7 +29,7 @@ YoloNode::YoloNode(const std::string &node_name,
   using std::placeholders::_1;
 
   this->declare_parameter<std::string>("image_topic", "/image_raw");
-  this->declare_parameter<std::string>("model_file", "autoaim/model/final.bin");
+  this->declare_parameter<std::string>("model_file", "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_bgr.bin");
   this->declare_parameter<std::string>("model_name", "");
   this->declare_parameter<int>("task_num", 2);
   this->declare_parameter<std::string>("config_file", "");
