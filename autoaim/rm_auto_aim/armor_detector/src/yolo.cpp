@@ -8,8 +8,10 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <cctype>
 #include <functional>
 #include <memory>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -73,17 +75,52 @@ YoloNode::YoloNode(const std::string &node_name,
   }
 
   if (use_image_file_) {
-    RCLCPP_INFO(this->get_logger(), "Using image file for inference: %s",
-                image_file_path_.c_str());
-    cv::Mat image = cv::imread(image_file_path_, cv::IMREAD_COLOR);
-    if (image.empty()) {
-      RCLCPP_ERROR(this->get_logger(), "Failed to read image file: %s",
+    namespace fs = std::filesystem;
+    std::vector<std::string> image_files;
+    try {
+      fs::path path(image_file_path_);
+      if (fs::is_directory(path)) {
+        RCLCPP_INFO(this->get_logger(), "Using image folder for inference: %s",
+                    image_file_path_.c_str());
+        for (const auto &entry : fs::directory_iterator(path)) {
+          if (!entry.is_regular_file()) {
+            continue;
+          }
+          std::string ext = entry.path().extension().string();
+          std::transform(ext.begin(), ext.end(), ext.begin(),
+                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+          if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" ||
+              ext == ".bmp" || ext == ".tif" || ext == ".tiff") {
+            image_files.emplace_back(entry.path().string());
+          }
+        }
+        std::sort(image_files.begin(), image_files.end());
+      } else {
+        image_files.emplace_back(image_file_path_);
+        RCLCPP_INFO(this->get_logger(), "Using image file for inference: %s",
+                    image_file_path_.c_str());
+      }
+    } catch (const fs::filesystem_error &e) {
+      RCLCPP_ERROR(this->get_logger(), "Path error: %s", e.what());
+    }
+
+    if (image_files.empty()) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "No valid image files found in path: %s",
                    image_file_path_.c_str());
     } else {
-      std_msgs::msg::Header header;
-      header.frame_id = "image_file";
-      header.stamp = this->now();
-      ProcessImage(image, header);
+      for (const auto &file : image_files) {
+        cv::Mat image = cv::imread(file, cv::IMREAD_COLOR);
+        if (image.empty()) {
+          RCLCPP_ERROR(this->get_logger(), "Failed to read image file: %s",
+                       file.c_str());
+          continue;
+        }
+        std_msgs::msg::Header header;
+        header.frame_id = fs::path(file).filename().string();
+        header.stamp = this->now();
+        ProcessImage(image, header);
+      }
     }
   } else {
     img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
