@@ -33,7 +33,7 @@ def generate_launch_description():
                                     .get('ros__parameters', {})
                                     .get('use_image_file', False)).lower()
 
-    use_image_file = LaunchConfiguration('use_image_file', default_value=use_image_file_default)
+    use_image_file = LaunchConfiguration('use_image_file')
     image_file_path = LaunchConfiguration('image_file_path')
     enable_fps_logging = LaunchConfiguration('enable_fps_logging')
 
@@ -75,7 +75,7 @@ def generate_launch_description():
         )
 
     return LaunchDescription([
-        DeclareLaunchArgument('use_image_file', default_value='false',
+        DeclareLaunchArgument('use_image_file', default_value=use_image_file_default,
                               description='Use folder images instead of camera'),
         DeclareLaunchArgument('image_file_path', default_value='/home/sunrise/dateset',
                               description='Folder path for offline images'),
