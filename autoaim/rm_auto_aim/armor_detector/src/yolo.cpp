@@ -460,7 +460,8 @@ void YoloNode::ProcessImage(const cv::Mat &image,
   dnn_output->model_w = model_input_width_;
   dnn_output->model_h = model_input_height_;
 
-  int ret = Run(inputs, dnn_output, false);
+  const bool sync_mode = use_image_file_;
+  int ret = Run(inputs, dnn_output, sync_mode);
   if (ret != 0 && ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
     return;

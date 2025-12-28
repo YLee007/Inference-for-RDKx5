@@ -76,7 +76,7 @@
     nms_threshold: 0.45
     detect_color: 1
     use_image_file: false
-    image_file_path: "/home/sunrise/dateset"
+    image_file_path: "/home/sunrise/dataset"
     enable_fps_logging: false
 
 
