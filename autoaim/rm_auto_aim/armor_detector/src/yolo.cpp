@@ -246,7 +246,6 @@ int YoloNode::PostProcess(
     // 数字/类别 argmax 13..21
     int cls_idx = 0; float cls_max = r[13];
     for (int k = 14; k <= 21; ++k) if (r[k] > cls_max) { cls_max = r[k]; cls_idx = k - 13; }
-    float cls_prob = sigmoid(cls_max);
 
     // 关键点：模型坐标->原图坐标 (输入顺序 TL, BL, BR, TR)
     float tlx = scale_x(r[0]); float tly = scale_y(r[1]);
@@ -276,10 +275,8 @@ int YoloNode::PostProcess(
       class_name = label;
     }
 
-    float final_score = obj * cls_prob;  // 使用经过 sigmoid 的分类概率
-    if (final_score < conf_thr) continue;
-
-    float class_score = final_score;     // NMS 与显示使用同一置信度
+    float final_score = obj;             // 与 OpenVINO 实现保持一致：置信度仅用 objectness
+    float class_score = cls_max;         // NMS 依据类别分支得分（未 sigmoid）
 
     rm_auto_aim::ArmorDetection det_out;
     det_out.kpts = std::move(kps);
