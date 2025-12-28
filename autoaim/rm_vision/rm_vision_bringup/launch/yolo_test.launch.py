@@ -1,5 +1,6 @@
 import os
 import sys
+import yaml
 from ament_index_python.packages import get_package_share_directory
 sys.path.append(os.path.join(get_package_share_directory('rm_vision_bringup'), 'launch'))
 
@@ -27,7 +28,12 @@ def generate_launch_description():
             condition=condition
         )
 
-    use_image_file = LaunchConfiguration('use_image_file')
+    config = yaml.safe_load(open(node_params, 'r'))
+    use_image_file_default = str(config.get('/yolo_node', {})
+                                    .get('ros__parameters', {})
+                                    .get('use_image_file', False)).lower()
+
+    use_image_file = LaunchConfiguration('use_image_file', default_value=use_image_file_default)
     image_file_path = LaunchConfiguration('image_file_path')
     enable_fps_logging = LaunchConfiguration('enable_fps_logging')
 
