@@ -77,7 +77,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('use_image_file', default_value=use_image_file_default,
                               description='Use folder images instead of camera'),
-        DeclareLaunchArgument('image_file_path', default_value='/home/sunrise/dateset',
+        DeclareLaunchArgument('image_file_path', default_value='/home/sunrise/dataset',
                               description='Folder path for offline images'),
         DeclareLaunchArgument('enable_fps_logging', default_value='false',
                               description='Enable FPS logging when using folder images'),
