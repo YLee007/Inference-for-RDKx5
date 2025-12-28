@@ -17,21 +17,25 @@ def generate_launch_description():
     from launch.conditions import UnlessCondition
     from launch import LaunchDescription
 
-    def get_camera_node(package, plugin):
+    def get_camera_node(package, plugin, condition=None):
         return ComposableNode(
             package=package,
             plugin=plugin,
             name='camera_node',
             parameters=[node_params],
-            extra_arguments=[{'use_intra_process_comms': True}]
+            extra_arguments=[{'use_intra_process_comms': True}],
+            condition=condition
         )
 
     use_image_file = LaunchConfiguration('use_image_file')
     image_file_path = LaunchConfiguration('image_file_path')
     enable_fps_logging = LaunchConfiguration('enable_fps_logging')
 
-    hik_camera_node = get_camera_node('hik_camera', 'hik_camera::HikCameraNode')
-    hik_camera_node.condition = UnlessCondition(use_image_file)
+    hik_camera_node = get_camera_node(
+        'hik_camera',
+        'hik_camera::HikCameraNode',
+        condition=UnlessCondition(use_image_file)
+    )
 
     # Test container with camera, YOLO detector, and armor detector only
     yolo_test_container = ComposableNodeContainer(

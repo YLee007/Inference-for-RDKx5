@@ -35,7 +35,7 @@ YoloNode::YoloNode(const std::string &node_name,
   this->declare_parameter<std::string>("config_file", "");
   this->declare_parameter<double>("score_threshold", 0.65);
   this->declare_parameter<double>("nms_threshold", 0.45);
-  this->declare_parameter<int>("detect_color", -1);
+  this->declare_parameter<int>("detect_color",1);
   this->declare_parameter<bool>("use_image_file", false);
   this->declare_parameter<std::string>("image_file_path", "");
   this->declare_parameter<bool>("enable_fps_logging", false);
