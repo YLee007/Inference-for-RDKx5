@@ -60,17 +60,17 @@ YoloNode::YoloNode(const std::string &node_name,
                 model_input_width_, model_input_height_);
     auto *model = this->GetModel();
     if (model && model->GetInputTensorProperties(input_properties_, 0) == 0) {
-      // Force RGB NCHW int8 input: 1x3x640x640
-      model_input_width_ = 640;
-      model_input_height_ = 640;
-      input_properties_.tensorLayout = HB_DNN_LAYOUT_NCHW;
-      input_properties_.tensorType = HB_DNN_TENSOR_TYPE_S8;
-      input_properties_.validShape.numDimensions = 4;
-      input_properties_.validShape.dimensionSize[0] = 1;
-      input_properties_.validShape.dimensionSize[1] = 3;
-      input_properties_.validShape.dimensionSize[2] = model_input_height_;
-      input_properties_.validShape.dimensionSize[3] = model_input_width_;
-      input_properties_.alignedShape = input_properties_.validShape;
+      // // Force RGB NCHW int8 input: 1x3x640x640
+      // model_input_width_ = 640;
+      // model_input_height_ = 640;
+      // input_properties_.tensorLayout = HB_DNN_LAYOUT_NCHW;
+      // input_properties_.tensorType = HB_DNN_TENSOR_TYPE_S8;
+      // input_properties_.validShape.numDimensions = 4;
+      // input_properties_.validShape.dimensionSize[0] = 1;
+      // input_properties_.validShape.dimensionSize[1] = 3;
+      // input_properties_.validShape.dimensionSize[2] = model_input_height_;
+      // input_properties_.validShape.dimensionSize[3] = model_input_width_;
+      // input_properties_.alignedShape = input_properties_.validShape;
       has_input_properties_ = true;
       RCLCPP_INFO(this->get_logger(),
                   "Input layout=%d type=%d dims=[%d,%d,%d,%d]",
