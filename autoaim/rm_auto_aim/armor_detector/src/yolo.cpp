@@ -48,6 +48,8 @@ YoloNode::YoloNode(const std::string &node_name,
   this->get_parameter("image_file_path", image_file_path_);
   this->get_parameter("enable_fps_logging", enable_fps_logging_);
 
+  this->get_logger().set_level((rclcpp::Logger::Level)10); // DEBUG
+
   if (Init() != 0) {
     throw std::runtime_error("YoloNode init failed");
   }
