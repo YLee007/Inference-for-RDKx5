@@ -11,6 +11,7 @@
 #include <cctype>
 #include <functional>
 #include <memory>
+#include <sstream>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -231,7 +232,24 @@ int YoloNode::PostProcess(
   }
   if (cols < 22) { RCLCPP_ERROR(this->get_logger(), "Expect >=22 columns, got %d", cols); return -1; }
 
+  // Dump raw model output (limited) for inspection
+  size_t total_elems = 1;
+  for (int i = 0; i < nd; ++i) {
+    total_elems *= static_cast<size_t>(dim[i]);
+  }
   auto *data = tensor->GetTensorData<float>();
+  if (!data) {
+    RCLCPP_ERROR(this->get_logger(), "Tensor data is null");
+    return -1;
+  }
+  size_t dump_n = std::min<size_t>(total_elems, 32);
+  std::ostringstream oss;
+  oss << "Raw output first " << dump_n << "/" << total_elems << " values:";
+  for (size_t i = 0; i < dump_n; ++i) {
+    oss << " " << data[i];
+  }
+  RCLCPP_DEBUG(this->get_logger(), "%s", oss.str().c_str());
+
   auto sigmoid = [](float x){ return 1.0f / (1.0f + std::exp(-x)); };
 
   const float conf_thr = score_threshold_;
@@ -464,6 +482,16 @@ void YoloNode::ProcessImage(const cv::Mat &image,
 
   auto inputs =
       std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
+  const auto &p = input_tensor->properties;
+  RCLCPP_DEBUG(this->get_logger(),
+              "Input tensor check: name=%s layout=%d type=%d "
+              "valid=[%d,%d,%d,%d] aligned=[%d,%d,%d,%d] memSize=%u",
+              p.tensorName, p.tensorLayout, p.tensorType,
+              p.validShape.dimensionSize[0], p.validShape.dimensionSize[1],
+              p.validShape.dimensionSize[2], p.validShape.dimensionSize[3],
+              p.alignedShape.dimensionSize[0], p.alignedShape.dimensionSize[1],
+              p.alignedShape.dimensionSize[2], p.alignedShape.dimensionSize[3],
+              input_tensor->sysMem[0].memSize);
 
   dnn_output->msg_header =
       std::make_shared<std_msgs::msg::Header>(header);
