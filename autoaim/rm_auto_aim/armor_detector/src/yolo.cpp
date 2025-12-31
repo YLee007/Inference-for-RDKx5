@@ -484,14 +484,14 @@ void YoloNode::ProcessImage(const cv::Mat &image,
       std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
   const auto &p = input_tensor->properties;
   RCLCPP_DEBUG(this->get_logger(),
-              "Input tensor check: name=%s layout=%d type=%d "
-              "valid=[%d,%d,%d,%d] aligned=[%d,%d,%d,%d] memSize=%u",
-              p.tensorName, p.tensorLayout, p.tensorType,
-              p.validShape.dimensionSize[0], p.validShape.dimensionSize[1],
-              p.validShape.dimensionSize[2], p.validShape.dimensionSize[3],
-              p.alignedShape.dimensionSize[0], p.alignedShape.dimensionSize[1],
-              p.alignedShape.dimensionSize[2], p.alignedShape.dimensionSize[3],
-              input_tensor->sysMem[0].memSize);
+               "Input tensor check: layout=%d type=%d "
+               "valid=[%d,%d,%d,%d] aligned=[%d,%d,%d,%d] memSize=%u",
+               p.tensorLayout, p.tensorType,
+               p.validShape.dimensionSize[0], p.validShape.dimensionSize[1],
+               p.validShape.dimensionSize[2], p.validShape.dimensionSize[3],
+               p.alignedShape.dimensionSize[0], p.alignedShape.dimensionSize[1],
+               p.alignedShape.dimensionSize[2], p.alignedShape.dimensionSize[3],
+               input_tensor->sysMem[0].memSize);
 
   dnn_output->msg_header =
       std::make_shared<std_msgs::msg::Header>(header);
