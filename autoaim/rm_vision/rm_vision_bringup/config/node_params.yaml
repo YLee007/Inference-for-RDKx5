@@ -69,8 +69,8 @@
 /yolo_node:
   ros__parameters:
     image_topic: "/image_raw"
-    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_bgr.bin"
-    model_name: "yolov5_bgr"
+    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
+    model_name: ""
     task_num: 4
     score_threshold: 0.65
     nms_threshold: 0.45
