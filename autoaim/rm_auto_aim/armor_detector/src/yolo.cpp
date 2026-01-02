@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cctype>
 #include <functional>
+#include <iomanip>
 #include <memory>
 #include <sstream>
 #include <filesystem>
@@ -506,6 +507,40 @@ void YoloNode::ProcessImage(const cv::Mat &image,
   if (ret != 0 && ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
     return;
+  }
+
+  if (use_image_file_) {
+    cv::Mat vis = image.clone();
+    for (const auto &det : rm_auto_aim::armors_keypoints) {
+      if (det.kpts.size() >= 4) {
+        std::vector<cv::Point> poly;
+        poly.reserve(det.kpts.size());
+        for (const auto &p : det.kpts) {
+          poly.emplace_back(cv::Point(cvRound(p.x), cvRound(p.y)));
+        }
+        cv::polylines(vis, poly, true, cv::Scalar(0, 255, 0), 2);
+        std::ostringstream label;
+        label << det.class_name << " " << std::fixed << std::setprecision(2)
+              << det.score;
+        cv::putText(vis, label.str(), poly.front(),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
+      }
+    }
+    namespace fs = std::filesystem;
+    fs::path out_dir("output");
+    std::error_code ec;
+    fs::create_directories(out_dir, ec);
+    fs::path fname(header.frame_id);
+    if (fname.empty()) fname = "frame.png";
+    if (fname.extension().empty()) fname += ".png";
+    fs::path out_path = out_dir / fname;
+    if (cv::imwrite(out_path.string(), vis)) {
+      RCLCPP_INFO(this->get_logger(), "Saved visualization to %s",
+                  out_path.string().c_str());
+    } else {
+      RCLCPP_WARN(this->get_logger(), "Failed to save visualization to %s",
+                  out_path.string().c_str());
+    }
   }
 
   UpdateFps();
