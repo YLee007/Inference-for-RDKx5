@@ -12,12 +12,14 @@
 #include <functional>
 #include <iomanip>
 #include <memory>
+#include <cstdint>
 #include <sstream>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include "dnn_node/util/image_proc.h"
+#include "dnn/hb_sys.h"
 #include "rclcpp_components/register_node_macro.hpp"
 
 namespace rm_auto_aim {
@@ -68,7 +70,7 @@ YoloNode::YoloNode(const std::string &node_name,
       // model_input_width_ = 640;
       // model_input_height_ = 640;
       // input_properties_.tensorLayout = HB_DNN_LAYOUT_NCHW;
-      // input_properties_.tensorType = HB_DNN_TENSOR_TYPE_S8;
+      // input_properties_.tensorType = HB_DNN_TENSOR_TYPE_F32;
       // input_properties_.validShape.numDimensions = 4;
       // input_properties_.validShape.dimensionSize[0] = 1;
       // input_properties_.validShape.dimensionSize[1] = 3;
@@ -344,17 +346,17 @@ int YoloNode::PostProcess(
     }
   }
 
-  RCLCPP_INFO(this->get_logger(),
-               "PostProcess produced %zu detections",
-               rm_auto_aim::armors_keypoints.size());
+  // RCLCPP_INFO(this->get_logger(),
+  //              "PostProcess produced %zu detections",
+  //              rm_auto_aim::armors_keypoints.size());
   
-  // 打印每个检测结果的详细信息
-  for (size_t i = 0; i < rm_auto_aim::armors_keypoints.size(); ++i) {
-    const auto& detection = rm_auto_aim::armors_keypoints[i];
-    RCLCPP_INFO(this->get_logger(),
-                "Detection %zu: class=%s, score=%.3f, keypoints=%zu",
-                i, detection.class_name.c_str(), detection.score, detection.kpts.size());
-  }
+  // // 打印每个检测结果的详细信息
+  // for (size_t i = 0; i < rm_auto_aim::armors_keypoints.size(); ++i) {
+  //   const auto& detection = rm_auto_aim::armors_keypoints[i];
+  //   RCLCPP_INFO(this->get_logger(),
+  //               "Detection %zu: class=%s, score=%.3f, keypoints=%zu",
+  //               i, detection.class_name.c_str(), detection.score, detection.kpts.size());
+  // }
   return 0;
 }
 
@@ -473,15 +475,41 @@ void YoloNode::ProcessImage(const cv::Mat &image,
                image.cols, image.rows, model_input_width_, model_input_height_,
                scale, x_offset, y_offset, dnn_output->ratio);
 
-  float tensor_ratio = 1.0f;
-  input_tensor = hobot::dnn_node::ImageProc::GetBGRTensorFromBGRImg(
-      letterbox_img, model_input_height_, model_input_width_, input_properties_,
-      tensor_ratio, hobot::dnn_node::ImageType::RGB, false, false, false);
+  input_tensor = std::make_shared<hobot::dnn_node::DNNTensor>();
+  input_tensor->properties = input_properties_;
 
-  if (!input_tensor) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Get input tensor fail");
+  int input_h = model_input_height_;
+  int input_w = model_input_width_;
+  if (input_tensor->properties.validShape.numDimensions == 4) {
+    input_h = input_tensor->properties.validShape.dimensionSize[2];
+    input_w = input_tensor->properties.validShape.dimensionSize[3];
+  }
+
+  if (hbSysAllocCachedMem(&input_tensor->sysMem[0],
+                          static_cast<int>(3 * input_h * input_w)) != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"),
+                 "Alloc input tensor memory fail");
     return;
   }
+
+  const uint8_t *data_u8 =
+      reinterpret_cast<const uint8_t *>(letterbox_img.ptr<uint8_t>());
+  auto *data_s8 =
+      reinterpret_cast<int8_t *>(input_tensor->sysMem[0].virAddr);
+
+  for (int h = 0; h < input_h; ++h) {
+    const uint8_t *row = data_u8 + h * input_w * 3;
+    for (int w = 0; w < input_w; ++w) {
+      int idx = h * input_w + w;
+      data_s8[(0 * input_h * input_w) + idx] =
+          static_cast<int8_t>(row[w * 3 + 2] - 128); // R
+      data_s8[(1 * input_h * input_w) + idx] =
+          static_cast<int8_t>(row[w * 3 + 1] - 128); // G
+      data_s8[(2 * input_h * input_w) + idx] =
+          static_cast<int8_t>(row[w * 3 + 0] - 128); // B
+    }
+  }
+  hbSysFlushMem(&input_tensor->sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
 
   auto inputs =
       std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};

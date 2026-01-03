@@ -69,10 +69,10 @@
 /yolo_node:
   ros__parameters:
     image_topic: "/image_raw"
-    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_rgb_NoPreprocess.bin"
+    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
     model_name: ""
     task_num: 4
-    score_threshold: 0.30
+    score_threshold: 0.40
     nms_threshold: 0.45
     detect_color: 1
     use_image_file: true
