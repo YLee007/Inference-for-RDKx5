@@ -55,6 +55,10 @@ struct Armor
   // 分类/置信
   float score;                       // 后处理的最终分数 obj×cls
   std::string classification_result; // 完整类别字符串（如 "B3"、"R5" 或 "G/Bs/Bb"）
+    // Source metadata
+    std::string source_frame;
+    int64_t stamp_sec = 0;
+    uint32_t stamp_nanosec = 0;
   int team_id = -1;                  // 0 = blue, 1 = red, -1 = unknown
 
   // 可选：旧 Light 方案兼容（不强制填充）

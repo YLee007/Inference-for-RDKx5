@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
@@ -23,6 +24,9 @@ struct DnnOutput : public hobot::dnn_node::DnnNodeOutput {
   // 原始输入图像分辨率
   int img_w = 0;
   int img_h = 0;
+
+  // 原图，用于后处理下游调试可视化
+  cv::Mat image_bgr;
 
   // 模型输入分辨率
   int model_w = 0;
@@ -71,6 +75,10 @@ class YoloNode : public hobot::dnn_node::DnnNode {
   bool enable_fps_logging_ = false;
   rclcpp::Time last_frame_time_;
   bool has_last_frame_time_ = false;
+
+  // 缓存最近一次检测结果，便于离线文件模式可视化
+  std::vector<ArmorDetection> last_detections_;
+  std::mutex last_det_mutex_;
 };
 
 }  // namespace rm_auto_aim

@@ -4,7 +4,9 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <functional>
 #include <opencv2/core.hpp>
+#include <std_msgs/msg/header.hpp>
 
 namespace rm_auto_aim {
 struct ArmorDetection {
@@ -17,7 +19,19 @@ struct ArmorDetection {
 	uint32_t stamp_nanosec = 0;
 };
 
-extern std::vector<ArmorDetection> armors_keypoints;
+using DetectionList = std::vector<ArmorDetection>;
+struct DetectionBundle {
+	DetectionList detections;
+	cv::Mat image_bgr;
+	std_msgs::msg::Header header;
+};
+using DetectionCallback = std::function<void(DetectionBundle&&)>;
+
+// Register a callback to receive detections in-process (no global buffer).
+void set_detection_callback(DetectionCallback cb);
+
+// Emit detections (and optional image/header) to the registered callback; no-op if not set.
+void emit_detections(DetectionBundle&& bundle);
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__ARMORS_SHARED_HPP_

@@ -15,6 +15,7 @@
 #include <auto_aim_interfaces/msg/armors.hpp>
 #include <auto_aim_interfaces/msg/debug_armors.hpp>
 #include <auto_aim_interfaces/msg/debug_lights.hpp>
+#include "armor_detector/armors_shared.hpp"
 
 // STD
 // Standard Library Includes
@@ -32,8 +33,8 @@ public:
   ArmorDetectorNode(const rclcpp::NodeOptions & options);
 
 private:
-  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
-  std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
+  void onDetections(DetectionBundle && bundle);
+  std::vector<Armor> convertDetections(DetectionList && dets);
 
   void publishMarkers();
 
@@ -58,9 +59,6 @@ private:
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  // Image subscription
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr regular_img_sub_;
-
   bool debug_;
   int frame_count_ = 0;
   rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
@@ -72,6 +70,7 @@ private:
 
   void createDebugPublishers();
   void destroyDebugPublishers();
+
 };
 
 }  // namespace rm_auto_aim

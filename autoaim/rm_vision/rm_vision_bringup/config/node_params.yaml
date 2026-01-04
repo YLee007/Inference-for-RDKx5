@@ -23,7 +23,7 @@
 
 /armor_detector:
   ros__parameters:
-    debug: ture
+    debug: true
     use_shared_memory: false
     detect_color: 0
     binary_thres: 78
@@ -72,9 +72,9 @@
     model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
     model_name: ""
     task_num: 4
-    score_threshold: 0.50
-    nms_threshold: 0.70
-    detect_color: 1
+    score_threshold: 0.30
+    nms_threshold: 0.65
+    detect_color: 0
     use_image_file: true
     image_file_path: "/home/sunrise/dataset"
     enable_fps_logging: false

@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <mutex>
 #include "dnn_node/util/image_proc.h"
 #include "dnn/hb_sys.h"
 #include "rclcpp_components/register_node_macro.hpp"
@@ -66,17 +67,6 @@ YoloNode::YoloNode(const std::string &node_name,
                 model_input_width_, model_input_height_);
     auto *model = this->GetModel();
     if (model && model->GetInputTensorProperties(input_properties_, 0) == 0) {
-      // // Force RGB NCHW int8 input: 1x3x640x640
-      // model_input_width_ = 640;
-      // model_input_height_ = 640;
-      // input_properties_.tensorLayout = HB_DNN_LAYOUT_NCHW;
-      // input_properties_.tensorType = HB_DNN_TENSOR_TYPE_F32;
-      // input_properties_.validShape.numDimensions = 4;
-      // input_properties_.validShape.dimensionSize[0] = 1;
-      // input_properties_.validShape.dimensionSize[1] = 3;
-      // input_properties_.validShape.dimensionSize[2] = model_input_height_;
-      // input_properties_.validShape.dimensionSize[3] = model_input_width_;
-      // input_properties_.alignedShape = input_properties_.validShape;
       has_input_properties_ = true;
       RCLCPP_INFO(this->get_logger(),
                   "Input layout=%d type=%d dims=[%d,%d,%d,%d]",
@@ -155,7 +145,8 @@ int YoloNode::PostProcess(
     return -1;
   }
 
-  rm_auto_aim::armors_keypoints.clear();
+  // Collect detections locally then emit via in-process callback
+  rm_auto_aim::DetectionList out_dets;
 
   // 使用自定义输出解析：
   // 0..7: 四个关键点(TL, BL, BR, TR) 的 x,y
@@ -220,7 +211,7 @@ int YoloNode::PostProcess(
     rows = static_cast<int>(dim[0]);
     cols = static_cast<int>(dim[1]);
   } else if (nd == 4) {
-    // 兼容 [1, 25200, 22, 1]（hobot 默认）和 [1, 1, 25200, 22] 等常见排列
+    // [1, 25200, 22, 1]
     if (dim[0] == 1 && dim[3] == 1) {
       rows = static_cast<int>(dim[1]);
       cols = static_cast<int>(dim[2]);
@@ -273,7 +264,7 @@ int YoloNode::PostProcess(
     int color_idx = 0; float color_max = r[9];
     for (int k = 10; k <= 12; ++k) if (r[k] > color_max) { color_max = r[k]; color_idx = k - 9; }
     if (color_idx >= 2) continue; // 丢弃灰/紫
-    // OpenVINO风格的颜色过滤：detect_color==0 只保留红(丢弃蓝)，detect_color==1 只保留蓝(丢弃红)
+    //颜色过滤：detect_color==0 只保留红(丢弃蓝)，detect_color==1 只保留蓝(丢弃红)
     if (detect_color == 0 && color_idx == 1) continue; // 0: red mode, drop blue
     if (detect_color == 1 && color_idx == 0) continue; // 1: blue mode, drop red
 
@@ -338,7 +329,7 @@ int YoloNode::PostProcess(
     int i = idx[m];
     if (suppressed[i]) continue;
     if (items[i].disp_score < conf_thr) continue; // 与 main.cc 一致，NMS 使用最终得分
-    rm_auto_aim::armors_keypoints.emplace_back(std::move(items[i].det));
+    out_dets.emplace_back(std::move(items[i].det));
     for (size_t n = m + 1; n < idx.size(); ++n) {
       int j = idx[n];
       if (suppressed[j]) continue;
@@ -346,9 +337,26 @@ int YoloNode::PostProcess(
     }
   }
 
+  // Push detections to downstream consumer (intra-process, zero-copy via move)
+  rm_auto_aim::DetectionBundle bundle;
+  bundle.detections = std::move(out_dets);
+  if (parser_output) {
+    if (parser_output->msg_header) {
+      bundle.header = *parser_output->msg_header;
+    }
+    // 传递原图用于下游可视化
+    bundle.image_bgr = parser_output->image_bgr;
+  }
+
+  {
+    std::lock_guard<std::mutex> lk(last_det_mutex_);
+    last_detections_ = bundle.detections; // 备份用于离线文件模式的落盘可视化
+  }
+  rm_auto_aim::emit_detections(std::move(bundle));
+
   // RCLCPP_INFO(this->get_logger(),
   //              "PostProcess produced %zu detections",
-  //              rm_auto_aim::armors_keypoints.size());
+  //              bundle.detections.size());
   
   // // 打印每个检测结果的详细信息
   // for (size_t i = 0; i < rm_auto_aim::armors_keypoints.size(); ++i) {
@@ -427,6 +435,8 @@ void YoloNode::ProcessImage(const cv::Mat &image,
   }
 
   auto dnn_output = std::make_shared<DnnOutput>();
+  // 保留原图以便后处理可视化
+  dnn_output->image_bgr = image.clone();
 
   std::shared_ptr<hobot::dnn_node::DNNTensor> input_tensor = nullptr;
 
@@ -538,8 +548,14 @@ void YoloNode::ProcessImage(const cv::Mat &image,
   }
 
   if (use_image_file_) {
+    std::vector<ArmorDetection> dets_copy;
+    {
+      std::lock_guard<std::mutex> lk(last_det_mutex_);
+      dets_copy = last_detections_;
+    }
+
     cv::Mat vis = image.clone();
-    for (const auto &det : rm_auto_aim::armors_keypoints) {
+    for (const auto &det : dets_copy) {
       if (det.kpts.size() >= 4) {
         std::vector<cv::Point> poly;
         poly.reserve(det.kpts.size());
