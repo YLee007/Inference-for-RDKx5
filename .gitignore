@@ -4,3 +4,4 @@ install/
 autoaim/MvSdkLog/
 vscode/
 autoaim/rm_vision/rm_vision_bringup/config/node_params.yaml
+autoaim/output

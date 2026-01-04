@@ -37,9 +37,9 @@ YoloNode::YoloNode(const std::string &node_name,
   this->declare_parameter<std::string>("model_name", "");
   this->declare_parameter<int>("task_num", 2);
   this->declare_parameter<std::string>("config_file", "");
-  this->declare_parameter<double>("score_threshold", 0.65);
-  this->declare_parameter<double>("nms_threshold", 0.45);
-  this->declare_parameter<int>("detect_color",1);
+  this->declare_parameter<double>("score_threshold", 0.30);
+  this->declare_parameter<double>("nms_threshold", 0.70);
+  this->declare_parameter<int>("detect_color", -1);
   this->declare_parameter<bool>("use_image_file", false);
   this->declare_parameter<std::string>("image_file_path", "");
   this->declare_parameter<bool>("enable_fps_logging", false);
@@ -309,8 +309,8 @@ int YoloNode::PostProcess(
       class_name = label;
     }
 
-    float final_score = obj;             // 与 OpenVINO 实现保持一致：置信度仅用 objectness
-    float class_score = cls_max;         // NMS 依据类别分支得分（未 sigmoid）
+    float final_score = obj * cls_max;   // 与 main.cc 对齐：objectness * 类别最大值
+    float class_score = cls_max;         // 保留类别分支得分以便可视化/调试
 
     rm_auto_aim::ArmorDetection det_out;
     det_out.kpts = std::move(kps);
@@ -332,12 +332,12 @@ int YoloNode::PostProcess(
   };
   std::vector<int> idx(items.size());
   std::iota(idx.begin(), idx.end(), 0);
-  std::sort(idx.begin(), idx.end(), [&](int i, int j){return items[i].class_score > items[j].class_score;});
+  std::sort(idx.begin(), idx.end(), [&](int i, int j){return items[i].disp_score > items[j].disp_score;});
   std::vector<char> suppressed(items.size(), 0);
   for (size_t m = 0; m < idx.size(); ++m) {
     int i = idx[m];
     if (suppressed[i]) continue;
-    if (items[i].class_score < conf_thr) continue; // 与OpenVINO相同，NMS阈值基于类别分数
+    if (items[i].disp_score < conf_thr) continue; // 与 main.cc 一致，NMS 使用最终得分
     rm_auto_aim::armors_keypoints.emplace_back(std::move(items[i].det));
     for (size_t n = m + 1; n < idx.size(); ++n) {
       int j = idx[n];
@@ -446,7 +446,7 @@ void YoloNode::ProcessImage(const cv::Mat &image,
     cv::resize(img, resized, cv::Size(new_w, new_h));
 
     cv::Mat letterbox_img(target_h, target_w, img.type(),
-                          cv::Scalar(114, 114, 114));
+                cv::Scalar(127, 127, 127));
 
     x_offset = (target_w - new_w) / 2;
     y_offset = (target_h - new_h) / 2;
