@@ -59,8 +59,9 @@ private:
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  bool debug_;
+  bool debug_{false};
   int frame_count_ = 0;
+  std::string camera_info_topic_{"/hik_camera/camera_info"};
   rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
   image_transport::Publisher number_img_pub_;
   image_transport::Publisher result_img_pub_;

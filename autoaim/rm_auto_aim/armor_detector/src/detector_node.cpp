@@ -44,6 +44,12 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
+  // Params
+  this->declare_parameter<bool>("debug", false);
+  this->declare_parameter<std::string>("camera_info_topic", camera_info_topic_);
+  debug_ = this->get_parameter("debug").as_bool();
+  camera_info_topic_ = this->get_parameter("camera_info_topic").as_string();
+
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
     "/detector/armors", rclcpp::SensorDataQoS());
@@ -86,8 +92,11 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       debug_ ? createDebugPublishers() : destroyDebugPublishers();
     });
 
+  // Apply initial debug state
+  debug_ ? createDebugPublishers() : destroyDebugPublishers();
+
   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/hik_camera/camera_info", rclcpp::SensorDataQoS(),
+    camera_info_topic_, rclcpp::SensorDataQoS(),
     [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camer_info) {
       cam_center_ = cv::Point2f(camer_info->k[2], camer_info->k[5]);
       cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camer_info);
@@ -114,7 +123,7 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
 
 void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
 {
-  if (!pnp_solver_ || !is_aim_task_) {
+  if (!is_aim_task_) {
     return;
   }
 
@@ -127,75 +136,78 @@ void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
     hdr.stamp.sec = armors.front().stamp_sec;
     hdr.stamp.nanosec = armors.front().stamp_nanosec;
   }
-  armors_msg_.header = armor_marker_.header = text_marker_.header = hdr;
 
-  armors_msg_.armors.clear();
-  armors_msg_.armors.reserve(armors.size());
-  marker_array_.markers.clear();
-  armor_marker_.id = 0;
-  text_marker_.id = 0;
+  if (pnp_solver_) {
+    armors_msg_.header = armor_marker_.header = text_marker_.header = hdr;
 
-  auto_aim_interfaces::msg::Armor armor_msg;
-  for (const auto & armor : armors) {
-    cv::Mat rvec, tvec;
-    bool success = pnp_solver_->solvePnP(armor, rvec, tvec);
-    if (success) {
-      // Fill basic info
-      armor_msg.type = ARMOR_TYPE_STR[static_cast<int>(armor.type)];
-      armor_msg.number = armor.classification_result;
+    armors_msg_.armors.clear();
+    armors_msg_.armors.reserve(armors.size());
+    marker_array_.markers.clear();
+    armor_marker_.id = 0;
+    text_marker_.id = 0;
 
-      // Fill pose
-      armor_msg.pose.position.x = tvec.at<double>(0);
-      armor_msg.pose.position.y = tvec.at<double>(1);
-      armor_msg.pose.position.z = tvec.at<double>(2);
-      // rvec to 3x3 rotation matrix
-      cv::Mat rotation_matrix;
-      cv::Rodrigues(rvec, rotation_matrix);
-      // rotation matrix to quaternion
-      tf2::Matrix3x3 tf2_rotation_matrix(
-        rotation_matrix.at<double>(0, 0), rotation_matrix.at<double>(0, 1),
-        rotation_matrix.at<double>(0, 2), rotation_matrix.at<double>(1, 0),
-        rotation_matrix.at<double>(1, 1), rotation_matrix.at<double>(1, 2),
-        rotation_matrix.at<double>(2, 0), rotation_matrix.at<double>(2, 1),
-        rotation_matrix.at<double>(2, 2));
-      tf2::Quaternion tf2_q;
-      tf2_rotation_matrix.getRotation(tf2_q);
-      armor_msg.pose.orientation = tf2::toMsg(tf2_q);
+    auto_aim_interfaces::msg::Armor armor_msg;
+    for (const auto & armor : armors) {
+      cv::Mat rvec, tvec;
+      bool success = pnp_solver_->solvePnP(armor, rvec, tvec);
+      if (success) {
+        // Fill basic info
+        armor_msg.type = ARMOR_TYPE_STR[static_cast<int>(armor.type)];
+        armor_msg.number = armor.classification_result;
 
-      // Fill the distance to image center
-      armor_msg.distance_to_image_center = pnp_solver_->calculateDistanceToCenter(armor.center);
+        // Fill pose
+        armor_msg.pose.position.x = tvec.at<double>(0);
+        armor_msg.pose.position.y = tvec.at<double>(1);
+        armor_msg.pose.position.z = tvec.at<double>(2);
+        // rvec to 3x3 rotation matrix
+        cv::Mat rotation_matrix;
+        cv::Rodrigues(rvec, rotation_matrix);
+        // rotation matrix to quaternion
+        tf2::Matrix3x3 tf2_rotation_matrix(
+          rotation_matrix.at<double>(0, 0), rotation_matrix.at<double>(0, 1),
+          rotation_matrix.at<double>(0, 2), rotation_matrix.at<double>(1, 0),
+          rotation_matrix.at<double>(1, 1), rotation_matrix.at<double>(1, 2),
+          rotation_matrix.at<double>(2, 0), rotation_matrix.at<double>(2, 1),
+          rotation_matrix.at<double>(2, 2));
+        tf2::Quaternion tf2_q;
+        tf2_rotation_matrix.getRotation(tf2_q);
+        armor_msg.pose.orientation = tf2::toMsg(tf2_q);
 
-      // Fill keypoints (reserve small fixed size to avoid reallocs)
-      armor_msg.kpts.clear();
-      armor_msg.kpts.reserve(armor.armor_keypoints.size());
-      for (const auto & pt : armor.armor_keypoints) {
-        geometry_msgs::msg::Point point;
-        point.x = pt.x;
-        point.y = pt.y;
-        armor_msg.kpts.emplace_back(point);
+        // Fill the distance to image center
+        armor_msg.distance_to_image_center = pnp_solver_->calculateDistanceToCenter(armor.center);
+
+        // Fill keypoints (reserve small fixed size to avoid reallocs)
+        armor_msg.kpts.clear();
+        armor_msg.kpts.reserve(armor.armor_keypoints.size());
+        for (const auto & pt : armor.armor_keypoints) {
+          geometry_msgs::msg::Point point;
+          point.x = pt.x;
+          point.y = pt.y;
+          armor_msg.kpts.emplace_back(point);
+        }
+
+        // Fill the markers
+        armor_marker_.id++;
+        armor_marker_.scale.y = armor.type == ArmorType::SMALL ? 0.135 : 0.23;
+        armor_marker_.pose = armor_msg.pose;
+        text_marker_.id++;
+        text_marker_.pose.position = armor_msg.pose.position;
+        text_marker_.pose.position.y -= 0.1;
+        text_marker_.text = armor.classification_result;
+        armors_msg_.armors.emplace_back(armor_msg);
+        marker_array_.markers.emplace_back(armor_marker_);
+        marker_array_.markers.emplace_back(text_marker_);
+      } else {
+        RCLCPP_WARN(this->get_logger(), "PnP failed!");
       }
-
-      // Fill the markers
-      armor_marker_.id++;
-      armor_marker_.scale.y = armor.type == ArmorType::SMALL ? 0.135 : 0.23;
-      armor_marker_.pose = armor_msg.pose;
-      text_marker_.id++;
-      text_marker_.pose.position = armor_msg.pose.position;
-      text_marker_.pose.position.y -= 0.1;
-      text_marker_.text = armor.classification_result;
-      armors_msg_.armors.emplace_back(armor_msg);
-      marker_array_.markers.emplace_back(armor_marker_);
-      marker_array_.markers.emplace_back(text_marker_);
-    } else {
-      RCLCPP_WARN(this->get_logger(), "PnP failed!");
     }
+
+    // Publishing detected armors
+    armors_pub_->publish(armors_msg_);
+
+    // Publishing marker
+    publishMarkers();
   }
-
-  // Publishing detected armors
-  armors_pub_->publish(armors_msg_);
-
-  // Publishing marker
-  publishMarkers();
 
   // Optional visualization overlay on original image
   if (debug_ && !bundle.image_bgr.empty()) {
