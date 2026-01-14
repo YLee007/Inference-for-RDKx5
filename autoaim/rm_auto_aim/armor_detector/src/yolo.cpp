@@ -485,7 +485,19 @@ void YoloNode::ProcessImage(const cv::Mat &image,
                image.cols, image.rows, model_input_width_, model_input_height_,
                scale, x_offset, y_offset, dnn_output->ratio);
 
-  input_tensor = std::make_shared<hobot::dnn_node::DNNTensor>();
+  input_tensor = std::shared_ptr<hobot::dnn_node::DNNTensor>(
+    new hobot::dnn_node::DNNTensor(),
+    [](hobot::dnn_node::DNNTensor *p) {
+      if (p) {
+        if (p->sysMem[0].phyAddr != 0 || p->sysMem[0].virAddr != nullptr) {
+          hbSysFreeMem(&p->sysMem[0]);
+        }
+        delete p;
+      }
+    });
+  input_tensor->sysMem[0].phyAddr = 0;
+  input_tensor->sysMem[0].virAddr = nullptr;
+  input_tensor->sysMem[0].memSize = 0;
   input_tensor->properties = input_properties_;
 
   int input_h = model_input_height_;

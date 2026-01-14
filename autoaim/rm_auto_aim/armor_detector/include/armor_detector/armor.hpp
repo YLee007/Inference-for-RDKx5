@@ -41,8 +41,6 @@ struct Light : public cv::Rect
 
 struct Armor
 {
-  // 基本标识
-  std::string number;        // 兼容旧字段，不强制使用
 
   // 几何属性
   cv::Point2f center;        // 由关键点/包围框计算的图像中心
@@ -61,8 +59,6 @@ struct Armor
     uint32_t stamp_nanosec = 0;
   int team_id = -1;                  // 0 = blue, 1 = red, -1 = unknown
 
-  // 可选：旧 Light 方案兼容（不强制填充）
-  Light left_light, right_light;
   cv::Mat number_img;
 
     Armor() = default;
