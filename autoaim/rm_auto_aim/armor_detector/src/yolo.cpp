@@ -126,7 +126,7 @@ YoloNode::YoloNode(const std::string &node_name,
         std_msgs::msg::Header header;
         header.frame_id = fs::path(file).filename().string();
         header.stamp = this->now();
-        ProcessImage(image, header);
+        ProcessImage(image, header, false);
       }
     }
   } else {
@@ -414,20 +414,20 @@ void YoloNode::FeedImg(
     return;
   }
 
-  if (img_msg->encoding != "bgr8") {
+  if (img_msg->encoding != "bgr8" && img_msg->encoding != "rgb8") {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), 
                  "Unsupported image encoding: %s", img_msg->encoding.c_str());
     return;
   }
 
-  auto cv_img =
-      cv_bridge::cvtColorForDisplay(cv_bridge::toCvShare(img_msg), "bgr8");
-
-  ProcessImage(cv_img->image, img_msg->header);
+  const bool is_rgb_input = img_msg->encoding == "rgb8";
+  auto cv_img = cv_bridge::toCvShare(img_msg, img_msg->encoding);
+  ProcessImage(cv_img->image, img_msg->header, is_rgb_input);
 }
 
 void YoloNode::ProcessImage(const cv::Mat &image,
-                            const std_msgs::msg::Header &header) {
+                            const std_msgs::msg::Header &header,
+                            bool is_rgb_input) {
   if (!has_input_properties_) {
     RCLCPP_ERROR(rclcpp::get_logger("yolo_node"),
                  "Input tensor properties not ready");
@@ -523,12 +523,23 @@ void YoloNode::ProcessImage(const cv::Mat &image,
     const uint8_t *row = data_u8 + h * input_w * 3;
     for (int w = 0; w < input_w; ++w) {
       int idx = h * input_w + w;
-      data_s8[(0 * input_h * input_w) + idx] =
-          static_cast<int8_t>(row[w * 3 + 2] - 128); // R
-      data_s8[(1 * input_h * input_w) + idx] =
-          static_cast<int8_t>(row[w * 3 + 1] - 128); // G
-      data_s8[(2 * input_h * input_w) + idx] =
-          static_cast<int8_t>(row[w * 3 + 0] - 128); // B
+      const uint8_t *pix = row + w * 3;
+      // 模型张量期望 RGB 排列
+      if (is_rgb_input) {
+        data_s8[(0 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[0] - 128); // R
+        data_s8[(1 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[1] - 128); // G
+        data_s8[(2 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[2] - 128); // B
+      } else {
+        data_s8[(0 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[2] - 128); // R
+        data_s8[(1 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[1] - 128); // G
+        data_s8[(2 * input_h * input_w) + idx] =
+            static_cast<int8_t>(pix[0] - 128); // B
+      }
     }
   }
   hbSysFlushMem(&input_tensor->sysMem[0], HB_SYS_MEM_CACHE_CLEAN);

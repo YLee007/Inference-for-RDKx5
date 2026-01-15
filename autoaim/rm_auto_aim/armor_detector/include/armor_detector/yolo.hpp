@@ -67,7 +67,8 @@ class YoloNode : public hobot::dnn_node::DnnNode {
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
   void FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
 
-  void ProcessImage(const cv::Mat &image, const std_msgs::msg::Header &header);
+  void ProcessImage(const cv::Mat &image, const std_msgs::msg::Header &header,
+                    bool is_rgb_input);
   void UpdateFps();
 
   bool use_image_file_ = false;
