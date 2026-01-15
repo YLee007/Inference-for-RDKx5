@@ -6,11 +6,16 @@ sys.path.append(os.path.join(get_package_share_directory('rm_vision_bringup'), '
 
 def generate_launch_description():
 
-    from common import launch_params, robot_state_publisher, node_params, tracker_node
+    from common import launch_params, robot_state_publisher, node_params
     from launch_ros.descriptions import ComposableNode
     from launch_ros.actions import ComposableNodeContainer
-    from launch.actions import TimerAction, Shutdown
+    from launch_ros.actions import Node
+    from launch.actions import DeclareLaunchArgument, Shutdown, TimerAction
     from launch import LaunchDescription
+    from launch.conditions import IfCondition
+    from launch.substitutions import LaunchConfiguration
+
+    with_tracker = LaunchConfiguration('with_tracker')
 
     def get_camera_node(package, plugin):
         return ComposableNode(
@@ -48,15 +53,31 @@ def generate_launch_description():
 
     camera = launch_params.get('camera', 'hik')
     if camera != 'hik':
-        raise RuntimeError('launch_params.yaml: no \'hik\' found')
+        raise RuntimeError('launch_params.yaml: only "hik" camera is supported')
     cam_detector = get_camera_detector_container(hik_camera_node)
+
+    tracker_node = Node(
+        package='armor_tracker',
+        executable='armor_tracker_node',
+        output='both',
+        emulate_tty=True,
+        parameters=[node_params, {'target_frame': 'camera_optical_frame'}],
+        ros_arguments=['--log-level', 'armor_tracker:='+launch_params['tracker_log_level']],
+        condition=IfCondition(with_tracker),
+    )
 
     delay_tracker_node = TimerAction(
         period=2.0,
         actions=[tracker_node],
+        condition=IfCondition(with_tracker),
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'with_tracker',
+            default_value='false',
+            description='Start armor_tracker in no_hardware (target_frame forced to camera_optical_frame)'
+        ),
         robot_state_publisher,
         cam_detector,
         delay_tracker_node,

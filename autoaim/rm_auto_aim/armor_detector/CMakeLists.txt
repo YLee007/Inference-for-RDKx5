@@ -25,7 +25,10 @@ ament_auto_find_build_dependencies()
 ###########
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  DIRECTORY src
+  src/detector.cpp
+  src/detector_node.cpp
+  src/pnp_solver.cpp
+  src/yolo.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
@@ -68,6 +71,5 @@ endif()
 #############
 
 ament_auto_package(
-  INSTALL_TO_SHARE
-  model
+  # YOLO model is provided externally (e.g. autoaim/model) via parameters.
 )

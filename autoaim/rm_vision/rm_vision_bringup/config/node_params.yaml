@@ -28,7 +28,7 @@
     image_topic: "/image_raw"
     detect_color: 0
 
-    yolo.model_path: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
+    yolo.model_path: "/home/sunrise/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
     yolo.score_threshold: 0.30
     yolo.nms_threshold: 0.65
     yolo.nms_top_k: 300
@@ -36,9 +36,6 @@
     binary_thres: 78
     light.min_ratio: 0.1
     armor.min_light_ratio: 0.8
-
-    classifier_threshold: 0.8
-    ignore_classes: ["negative"]
 
 /armor_tracker:
   ros__parameters:
@@ -77,7 +74,7 @@
   ros__parameters:
     # Image topic to subscribe (set to your actual published image topic)
     image_topic: "/image_raw"
-    model_file: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
+    model_file: "/home/sunrise/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
     model_name: ""
     task_num: 4
     score_threshold: 0.30

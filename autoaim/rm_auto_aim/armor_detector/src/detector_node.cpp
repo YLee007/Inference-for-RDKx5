@@ -7,7 +7,6 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/convert.h>
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <image_transport/image_transport.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
@@ -204,15 +203,6 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
   param_desc.integer_range[0].to_value = 1;
   auto detect_color = declare_parameter("detect_color", RED, param_desc);
 
-  // Legacy params kept for compatibility with existing yamls. Not used in YOLO mode.
-  {
-    double cls_threshold = this->declare_parameter("classifier_threshold", 0.7);
-    std::vector<std::string> ignore_classes =
-      this->declare_parameter("ignore_classes", std::vector<std::string>{"negative"});
-    (void)cls_threshold;
-    (void)ignore_classes;
-  }
-
   Detector::LightParams l_params = {
     .min_ratio = declare_parameter("light.min_ratio", 0.1),
     .max_ratio = declare_parameter("light.max_ratio", 0.4),
@@ -229,22 +219,24 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
     .max_angle = declare_parameter("armor.max_angle", 35.0)};
 
   // YOLO params
-  auto pkg_path = ament_index_cpp::get_package_share_directory("armor_detector");
-  const std::string default_yolo_model = pkg_path + "/model/yolo.bin";
   Detector::YoloParams yolo_params;
-  yolo_params.model_path = this->declare_parameter("yolo.model_path", default_yolo_model);
+  yolo_params.model_path = this->declare_parameter("yolo.model_path", std::string(""));
   yolo_params.score_threshold =
     static_cast<float>(this->declare_parameter("yolo.score_threshold", 0.30));
   yolo_params.nms_threshold = static_cast<float>(this->declare_parameter("yolo.nms_threshold", 0.70));
   yolo_params.nms_top_k = this->declare_parameter("yolo.nms_top_k", 300);
 
   {
+    if (yolo_params.model_path.empty()) {
+      RCLCPP_FATAL(this->get_logger(), "Set required parameter: yolo.model_path");
+      throw std::runtime_error("YOLO model_path is empty");
+    }
     std::ifstream f(yolo_params.model_path);
     if (!f.good()) {
       RCLCPP_FATAL(
         this->get_logger(),
-        "YOLO model file not found: '%s'. Set parameter yolo.model_path or place model at '%s'.",
-        yolo_params.model_path.c_str(), default_yolo_model.c_str());
+        "YOLO model file not found: '%s'. Set parameter yolo.model_path.",
+        yolo_params.model_path.c_str());
       throw std::runtime_error("YOLO model file not found");
     }
   }

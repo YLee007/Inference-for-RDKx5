@@ -2,7 +2,6 @@
 
 - [DetectorNode](#basedetectornode)
   - [Detector](#detector)
-    - [NumberClassifier](#numberclassifier)
   - [PnPSolver](#pnpsolver)
 
 ## 识别节点
@@ -38,8 +37,6 @@
 - 是否发布 debug 信息 `debug`
 - 识别目标颜色 `detect_color`
 - 二值化的最小阈值 `binary_thres`
-- 数字分类器 `classifier`
-  - 置信度阈值 `threshold`
 
 ## Detector
 装甲板识别器
@@ -78,33 +75,6 @@
 配对灯条
 
 根据 `detect_color` 选择对应颜色的灯条进行两两配对，首先筛除掉两条灯条中间包含另一个灯条的情况，然后根据两灯条的长度之比、两灯条中心的距离、配对出装甲板的倾斜角度来筛选掉条件不满足的结果，得到形状符合装甲板特征的灯条配对。
-
-## NumberClassifier
-数字分类器
-
-### extractNumbers
-提取数字
-
-| ![](docs/num_raw.png) | ![](docs/num_warp.png) | ![](docs/num_roi.png) | ![](docs/num_bin.png) |
-| :-------------------: | :--------------------: | :-------------------: | :-------------------: |
-|         原图          |        透视变换        |         取ROI         |        二值化         |
-
-将每条灯条上下的角点拉伸到装甲板的上下边缘作为待变换点，进行透视变换，再对变换后的图像取ROI。考虑到数字图案实质上就是黑色背景+白色图案，所以此处使用了大津法进行二值化。
-
-### Classify
-分类
-
-由于上一步对于数字的提取效果已经非常好，数字图案的特征非常清晰明显，装甲板的远近、旋转都不会使图案产生过多畸变，且图案像素点少，所以我们使用多层感知机（MLP）进行分类。
-
-网络结构中定义了两个隐藏层和一个分类层，将二值化后的数字展平成 20x28=560 维的输入，送入网络进行分类。
-
-网络结构：
-
-![](docs/model.svg)
-
-<!-- 效果图： -->
-
-<!-- ![](docs/result.png) -->
 
 ## PnPSolver
 PnP解算器
