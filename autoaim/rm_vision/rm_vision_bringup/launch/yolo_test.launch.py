@@ -43,14 +43,25 @@ def generate_launch_description():
         condition=UnlessCondition(use_image_file)
     )
 
-    # Test container with camera, YOLO detector, and armor detector only
+    hik_camera_container = ComposableNodeContainer(
+            name='hik_camera_container',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container_mt',
+            composable_node_descriptions=[
+                hik_camera_node,
+            ],
+            output='both',
+            emulate_tty=True,
+        )
+
+    # Test container with YOLO detector and armor detector only
     yolo_test_container = ComposableNodeContainer(
             name='yolo_test_container',
             namespace='',
             package='rclcpp_components',
-            executable='component_container',
+            executable='component_container_mt',
             composable_node_descriptions=[
-                hik_camera_node,
                 ComposableNode(
                     package='armor_detector',
                     plugin='rm_auto_aim::YoloNode',
@@ -81,5 +92,6 @@ def generate_launch_description():
                               description='Folder path for offline images'),
         DeclareLaunchArgument('enable_fps_logging', default_value='false',
                               description='Enable FPS logging when using folder images'),
+        hik_camera_container,
         yolo_test_container,
     ])

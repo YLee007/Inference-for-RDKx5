@@ -26,7 +26,7 @@
     debug: true
     # CameraInfo topic to subscribe (set to your actual published topic)
     # e.g. "/hik_camera/camera_info" or "/camera_node/camera_info" or "/camera_info"
-    camera_info_topic: "/hik_camera/camera_info"
+    camera_info_topic: "/camera_info"
     detect_color: 0
     binary_thres: 78
     light.min_ratio: 0.1
