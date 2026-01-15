@@ -1,85 +1,58 @@
+// Copyright (C) 2026
+// Licensed under the MIT License.
+
 #ifndef ARMOR_DETECTOR__YOLO_HPP_
 #define ARMOR_DETECTOR__YOLO_HPP_
 
+#include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
-#include <mutex>
 
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/header.hpp"
-#include "dnn/hb_dnn.h"
+#include <opencv2/core.hpp>
 
-#include "dnn_node/dnn_node.h"
-#include "armor_detector/armors_shared.hpp"
-#include <sensor_msgs/msg/image.hpp>
-#include <opencv2/core/mat.hpp>
+namespace rm_auto_aim
+{
 
-namespace rm_auto_aim {
+class Yolo
+{
+public:
+  struct Params
+  {
+    std::string model_path;
+    float score_threshold = 0.30f;
+    float nms_threshold = 0.70f;
+    int nms_top_k = 300;
 
-// 继承 DnnNodeOutput
-struct DnnOutput : public hobot::dnn_node::DnnNodeOutput {
-  // 前处理时的缩放比例（用于将 model-space 坐标映射回原图）
-  float ratio = 1.0f;
-  // 原始输入图像分辨率
-  int img_w = 0;
-  int img_h = 0;
+    // detect_color: -1 keep red+blue; 0 keep red; 1 keep blue
+    int detect_color = -1;
+  };
 
-  // 原图，用于后处理下游调试可视化
-  cv::Mat image_bgr;
+  struct Detection
+  {
+    // Keypoints in original image coordinates, order: TL, BL, BR, TR
+    std::array<cv::Point2f, 4> kpts;
+    int color_idx = -1;  // 0 red, 1 blue, 2 gray, 3 purple
+    int cls_idx = -1;    // 0..8 => {G,1,2,3,4,5,O,Bs,Bb}
+    float obj = 0.0f;
+    float cls_score = 0.0f;
+    float score = 0.0f;  // obj * cls_score
+  };
 
-  // 模型输入分辨率
-  int model_w = 0;
-  int model_h = 0;
+  explicit Yolo(const Params & params);
+  ~Yolo();
 
-  // 预处理后实际送入模型的分辨率（hobotcv resize 后的尺寸）
-  int resized_w = 0;
-  int resized_h = 0;
-  // letterbox/resize 偏移
-  float x_offset = 0.0f;
-  float y_offset = 0.0f;
-};
+  Yolo(const Yolo &) = delete;
+  Yolo & operator=(const Yolo &) = delete;
 
-class YoloNode : public hobot::dnn_node::DnnNode {
- public:
-  YoloNode(const std::string &node_name = "yolo_node",
-           const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
-  
-  // 为组件支持添加的构造函数
-  explicit YoloNode(const rclcpp::NodeOptions &options);
+  std::vector<Detection> infer(const cv::Mat & rgb);
 
- protected:
-  int SetNodePara() override;
+  static const std::vector<std::string> & classNames();
 
-  int PostProcess(const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &
-                  node_output) override;
-
- private:
-  int model_input_width_ = -1;
-  int model_input_height_ = -1;
-  float score_threshold_ = 0.65f;
-  float nms_threshold_ = 0.45f;
-  int detect_color_ = -1;
-  hbDNNTensorProperties input_properties_{};
-  bool has_input_properties_ = false;
-
-  // 图片订阅
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
-  void FeedImg(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
-
-  void ProcessImage(const cv::Mat &image, const std_msgs::msg::Header &header,
-                    bool is_rgb_input);
-  void UpdateFps();
-
-  bool use_image_file_ = false;
-  std::string image_file_path_;
-  bool enable_fps_logging_ = false;
-  rclcpp::Time last_frame_time_;
-  bool has_last_frame_time_ = false;
-
-  // 缓存最近一次检测结果，便于离线文件模式可视化
-  std::vector<ArmorDetection> last_detections_;
-  std::mutex last_det_mutex_;
+private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace rm_auto_aim

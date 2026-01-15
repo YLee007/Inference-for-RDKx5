@@ -1,47 +1,57 @@
+// Copyright (C) 2022 ChenJun
+// Copyright (C) 2024 Zheng Yu
+// Licensed under the MIT License.
+
 #ifndef ARMOR_DETECTOR__DETECTOR_NODE_HPP_
 #define ARMOR_DETECTOR__DETECTOR_NODE_HPP_
 
 // ROS
 #include <geometry_msgs/msg/point.hpp>
 #include <image_transport/image_transport.hpp>
+#include <image_transport/publisher.hpp>
+#include <image_transport/subscriber_filter.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/string.hpp>
-#include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-#include <rcl_interfaces/msg/parameter.hpp>
-#include <auto_aim_interfaces/msg/armors.hpp>
-#include <auto_aim_interfaces/msg/debug_armors.hpp>
-#include <auto_aim_interfaces/msg/debug_lights.hpp>
-#include "armor_detector/armors_shared.hpp"
 
 // STD
-// Standard Library Includes
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "pnp_solver.hpp"
+#include "armor_detector/detector.hpp"
+#include "armor_detector/pnp_solver.hpp"
+#include "auto_aim_interfaces/msg/armors.hpp"
 
 namespace rm_auto_aim
 {
+
 class ArmorDetectorNode : public rclcpp::Node
 {
 public:
   ArmorDetectorNode(const rclcpp::NodeOptions & options);
 
 private:
-  void onDetections(DetectionBundle && bundle);
-  std::vector<Armor> convertDetections(DetectionList && dets);
+  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+
+  std::unique_ptr<Detector> initDetector();
+  std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
+
+  void createDebugPublishers();
+  void destroyDebugPublishers();
 
   void publishMarkers();
 
-  // Task subscriber
+  //  task subscriber
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr task_sub_;
   bool is_aim_task_;
   void taskCallback(const std_msgs::msg::String::SharedPtr task_msg);
+
+  // Armor Detector
+  std::unique_ptr<Detector> detector_;
 
   // Detected armors publisher
   auto_aim_interfaces::msg::Armors armors_msg_;
@@ -59,22 +69,16 @@ private:
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  bool debug_{false};
-  int frame_count_ = 0;
-  std::string camera_info_topic_{"/hik_camera/camera_info"};
-  rclcpp::Publisher<auto_aim_interfaces::msg::DebugArmors>::SharedPtr armors_data_pub_;
-  image_transport::Publisher number_img_pub_;
-  image_transport::Publisher result_img_pub_;
+  // Image subscrpition
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
 
+  // Debug information
+  bool debug_;
   std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
-
-  void createDebugPublishers();
-  void destroyDebugPublishers();
-
+  image_transport::Publisher result_img_pub_;
 };
 
 }  // namespace rm_auto_aim
 
 #endif  // ARMOR_DETECTOR__DETECTOR_NODE_HPP_
-

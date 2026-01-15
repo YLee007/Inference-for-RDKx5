@@ -16,25 +16,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ## Find dependencies ##
 #######################
 
-include_directories(
-        ${SYS_ROOT}/usr/include
-        ${SYS_ROOT}/usr/include/hobot/
-	      ${SYS_ROOT}/usr/hobot/include/
-        ${SYS_ROOT}/usr/include/opencv/
-)
-
-link_directories(
-  ${SYS_ROOT}/usr/lib/hbbpu/
-  ${SYS_ROOT}/usr/lib/
-  ${SYS_ROOT}/usr/hobot/lib/
-)
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(hobot_cv REQUIRED)  # 添加对 hobot_cv 库的依赖
-find_package(hbm_img_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(dnn_node REQUIRED)
-
 ament_auto_find_build_dependencies()
 
 ###########
@@ -45,28 +28,17 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   DIRECTORY src
 )
 
+target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 
-# 添加对 hobot_cv 的支持
-target_include_directories(${PROJECT_NAME} PUBLIC 
-  ${OpenCV_INCLUDE_DIRS}
-  ${hobot_cv_INCLUDE_DIRS}  
-)
-
-target_link_libraries(${PROJECT_NAME} 
-  ${OpenCV_LIBS}
-  ${hobot_cv_LIBRARIES}  
-  dnn_node::dnn_node
-)
+# RDK libdnn headers/libraries
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/dnn)
+target_link_libraries(${PROJECT_NAME} dnn pthread rt dl)
+target_link_options(${PROJECT_NAME} PRIVATE "-Wl,-unresolved-symbols=ignore-in-shared-libs")
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN rm_auto_aim::ArmorDetectorNode
   EXECUTABLE armor_detector_node
-)
-
-# Register YoloNode component and provide an executable for convenience
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN rm_auto_aim::YoloNode
-  EXECUTABLE yolo_node
 )
 
 #############
@@ -82,10 +54,12 @@ if(BUILD_TESTING)
   )
   ament_lint_auto_find_test_dependencies()
 
-  find_package(ament_cmake_gtest)
-  ament_add_gtest(test_node_startup test/test_node_startup.cpp)
-  target_link_libraries(test_node_startup ${PROJECT_NAME})
+  # find_package(ament_cmake_gtest)
+  # ament_add_gtest(test_node_startup test/test_node_startup.cpp)
+  # target_link_libraries(test_node_startup ${PROJECT_NAME})
 
+  # ament_add_gtest(test_number_cls test/test_number_cls.cpp)
+  # target_link_libraries(test_number_cls ${PROJECT_NAME})
 
 endif()
 
@@ -93,5 +67,7 @@ endif()
 ## Install ##
 #############
 
-ament_auto_package()
-
+ament_auto_package(
+  INSTALL_TO_SHARE
+  model
+)

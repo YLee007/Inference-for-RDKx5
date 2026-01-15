@@ -10,7 +10,6 @@
 // STL
 #include <algorithm>
 #include <string>
-#include <vector>
 
 namespace rm_auto_aim
 {
@@ -41,41 +40,27 @@ struct Light : public cv::Rect
 
 struct Armor
 {
+  Armor() = default;
+  Armor(const Light & l1, const Light & l2)
+  {
+    if (l1.center.x < l2.center.x) {
+      left_light = l1, right_light = l2;
+    } else {
+      left_light = l2, right_light = l1;
+    }
+    center = (left_light.center + right_light.center) / 2;
+  }
 
-  // 几何属性
-  cv::Point2f center;        // 由关键点/包围框计算的图像中心
-  cv::Point2f center_norm;   // 归一化中心（可选，若未使用可忽略）
-  ArmorType type;            // SMALL / LARGE
-  cv::Rect bbox;             // 由关键点计算的外接矩形
-  std::vector<cv::Point2f> armor_keypoints; // PnP 期望顺序：BL, TL, TR, BR
-  cv::Point2f offset_;       
+  // Light pairs part
+  Light left_light, right_light;
+  cv::Point2f center;
+  ArmorType type;
 
-  // 分类/置信
-  float score;                       // 后处理的最终分数 obj×cls
-  std::string classification_result; // 完整类别字符串（如 "B3"、"R5" 或 "G/Bs/Bb"）
-    // Source metadata
-    std::string source_frame;
-    int64_t stamp_sec = 0;
-    uint32_t stamp_nanosec = 0;
-  int team_id = -1;                  // 0 = blue, 1 = red, -1 = unknown
-
+  // Number part
   cv::Mat number_img;
-
-    Armor() = default;
-    Armor(float score,
-      const cv::Rect & bbox,
-      std::vector<cv::Point2f> armor_keypoints,
-      const cv::Point2f & center)
-    :center(center),
-    center_norm(),
-    type(ArmorType::INVALID),
-    bbox(bbox),
-    armor_keypoints(std::move(armor_keypoints)),
-    offset_(),
-    score(score),
-    classification_result(),
-    team_id(-1)
-  {}
+  std::string number;
+  float confidence;
+  std::string classfication_result;
 };
 
 }  // namespace rm_auto_aim

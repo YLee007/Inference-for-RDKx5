@@ -8,47 +8,38 @@
 #include <tf2/convert.h>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <image_transport/image_transport.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/qos.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // STD
-#include <chrono>
-#include <functional>
-#include <iomanip>
+#include <algorithm>
+#include <fstream>
+#include <map>
 #include <memory>
 #include <string>
-#include <cctype>
 #include <vector>
-#include <sstream>
 
-#include <image_transport/image_transport.hpp>
 #include "armor_detector/armor.hpp"
 #include "armor_detector/detector_node.hpp"
-#include <std_msgs/msg/header.hpp>
-#include "auto_aim_interfaces/msg/debug_armors.hpp"
-#include "auto_aim_interfaces/msg/debug_lights.hpp"
-#include "geometry_msgs/msg/point.hpp"
-#include "rcl_interfaces/msg/parameter.hpp"
-#include "std_msgs/msg/string.hpp"
-#include "visualization_msgs/msg/marker.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
 
 namespace rm_auto_aim
 {
 ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
-: rclcpp::Node("armor_detector", options)
+: Node("armor_detector", options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
-  // Params
-  this->declare_parameter<bool>("debug", false);
-  this->declare_parameter<std::string>("camera_info_topic", camera_info_topic_);
-  debug_ = this->get_parameter("debug").as_bool();
-  camera_info_topic_ = this->get_parameter("camera_info_topic").as_string();
+  // Topic params (keep compatibility with existing bringup yamls)
+  const std::string camera_info_topic =
+    this->declare_parameter("camera_info_topic", std::string("/camera_info"));
+  const std::string image_topic = this->declare_parameter("image_topic", std::string("/image_raw"));
+
+  // Detector
+  detector_ = initDetector();
 
   // Armors Publisher
   armors_pub_ = this->create_publisher<auto_aim_interfaces::msg::Armors>(
@@ -79,6 +70,12 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   marker_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("/detector/marker", 10);
 
+  // Debug Publishers
+  debug_ = this->declare_parameter("debug", false);
+  if (debug_) {
+    createDebugPublishers();
+  }
+
   // Task subscriber
   is_aim_task_ = true;
   task_sub_ = this->create_subscription<std_msgs::msg::String>(
@@ -92,27 +89,22 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       debug_ ? createDebugPublishers() : destroyDebugPublishers();
     });
 
-  // Apply initial debug state
-  debug_ ? createDebugPublishers() : destroyDebugPublishers();
-
   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-    camera_info_topic_, rclcpp::SensorDataQoS(),
-    [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camer_info) {
-      cam_center_ = cv::Point2f(camer_info->k[2], camer_info->k[5]);
-      cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camer_info);
-      pnp_solver_ = std::make_unique<PnPSolver>(camer_info->k, camer_info->d);
+    camera_info_topic, rclcpp::SensorDataQoS(),
+    [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
+      cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
+      cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
+      pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
       cam_info_sub_.reset();
     });
 
-  // In-process detection handoff: receive detections directly from YoloNode, single callback chain
-  set_detection_callback([this](DetectionBundle && bundle) {
-    this->onDetections(std::move(bundle));
-  });
+  img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+    image_topic, rclcpp::SensorDataQoS(),
+    std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
 {
-  using std::placeholders::_1;
   std::string task_mode = task_msg->data;
   if (task_mode == "aim") {
     is_aim_task_ = true;
@@ -121,27 +113,13 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
   }
 }
 
-void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
+void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)
 {
-  if (!is_aim_task_) {
-    return;
-  }
+  auto armors = detectArmors(img_msg);
 
-  auto armors = convertDetections(std::move(bundle.detections));
-
-  // Header: prefer bundle header; fallback to detection timestamp
-  std_msgs::msg::Header hdr = bundle.header;
-  if (hdr.stamp.sec == 0 && hdr.stamp.nanosec == 0 && !armors.empty()) {
-    hdr.frame_id = armors.front().source_frame;
-    hdr.stamp.sec = armors.front().stamp_sec;
-    hdr.stamp.nanosec = armors.front().stamp_nanosec;
-  }
-
-  if (pnp_solver_) {
-    armors_msg_.header = armor_marker_.header = text_marker_.header = hdr;
-
+  if (pnp_solver_ != nullptr && is_aim_task_) {
+    armors_msg_.header = armor_marker_.header = text_marker_.header = img_msg->header;
     armors_msg_.armors.clear();
-    armors_msg_.armors.reserve(armors.size());
     marker_array_.markers.clear();
     armor_marker_.id = 0;
     text_marker_.id = 0;
@@ -153,7 +131,7 @@ void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
       if (success) {
         // Fill basic info
         armor_msg.type = ARMOR_TYPE_STR[static_cast<int>(armor.type)];
-        armor_msg.number = armor.classification_result;
+        armor_msg.number = armor.number;
 
         // Fill pose
         armor_msg.pose.position.x = tvec.at<double>(0);
@@ -176,10 +154,11 @@ void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
         // Fill the distance to image center
         armor_msg.distance_to_image_center = pnp_solver_->calculateDistanceToCenter(armor.center);
 
-        // Fill keypoints (reserve small fixed size to avoid reallocs)
+        // Fill keypoints
         armor_msg.kpts.clear();
-        armor_msg.kpts.reserve(armor.armor_keypoints.size());
-        for (const auto & pt : armor.armor_keypoints) {
+        for (const auto & pt :
+             {armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom,
+              armor.right_light.top}) {
           geometry_msgs::msg::Point point;
           point.x = pt.x;
           point.y = pt.y;
@@ -193,7 +172,7 @@ void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
         text_marker_.id++;
         text_marker_.pose.position = armor_msg.pose.position;
         text_marker_.pose.position.y -= 0.1;
-        text_marker_.text = armor.classification_result;
+        text_marker_.text = armor.classfication_result;
         armors_msg_.armors.emplace_back(armor_msg);
         marker_array_.markers.emplace_back(armor_marker_);
         marker_array_.markers.emplace_back(text_marker_);
@@ -208,114 +187,111 @@ void ArmorDetectorNode::onDetections(DetectionBundle && bundle)
     // Publishing marker
     publishMarkers();
   }
-
-  // Optional visualization overlay on original image
-  if (debug_ && !bundle.image_bgr.empty()) {
-    cv::Mat vis = bundle.image_bgr.clone();
-    // Draw camera center if known
-    if (cam_info_) {
-      cv::circle(vis, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
-    }
-    // Draw armors and labels
-    for (const auto & armor : armors) {
-      if (armor.armor_keypoints.size() >= 4) {
-        std::vector<cv::Point> poly;
-        poly.reserve(armor.armor_keypoints.size());
-        for (const auto & p : armor.armor_keypoints) {
-          poly.emplace_back(cv::Point(cvRound(p.x), cvRound(p.y)));
-        }
-        cv::polylines(vis, poly, true, cv::Scalar(0, 255, 0), 2);
-        std::ostringstream label;
-        label << armor.classification_result << " " << std::fixed << std::setprecision(2)
-              << armor.score;
-        cv::putText(vis, label.str(), poly.front(), cv::FONT_HERSHEY_SIMPLEX, 0.6,
-                    cv::Scalar(0, 255, 0), 2);
-      }
-    }
-
-    // Latency if timestamp available
-    if (hdr.stamp.sec != 0 || hdr.stamp.nanosec != 0) {
-      rclcpp::Time det_ts(hdr.stamp);
-      auto latency = (this->now() - det_ts).seconds() * 1000;
-      std::stringstream latency_ss;
-      latency_ss << "Latency: " << std::fixed << std::setprecision(2) << latency << "ms";
-      cv::putText(vis, latency_ss.str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0,
-                  cv::Scalar(0, 255, 0), 2);
-    }
-
-    result_img_pub_.publish(cv_bridge::CvImage(hdr, "bgr8", vis).toImageMsg());
-  }
 }
 
-std::vector<Armor> ArmorDetectorNode::convertDetections(DetectionList && dets)
+std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
 {
-  std::vector<Armor> armors;
-  if (dets.empty()) {
-    return armors;
+  rcl_interfaces::msg::ParameterDescriptor param_desc;
+  param_desc.integer_range.resize(1);
+  param_desc.integer_range[0].step = 1;
+  param_desc.integer_range[0].from_value = 0;
+  param_desc.integer_range[0].to_value = 255;
+  int binary_thres = declare_parameter("binary_thres", 160, param_desc);
+
+  param_desc.description = "0-RED, 1-BLUE";
+  param_desc.integer_range[0].from_value = 0;
+  param_desc.integer_range[0].to_value = 1;
+  auto detect_color = declare_parameter("detect_color", RED, param_desc);
+
+  // Legacy params kept for compatibility with existing yamls. Not used in YOLO mode.
+  {
+    double cls_threshold = this->declare_parameter("classifier_threshold", 0.7);
+    std::vector<std::string> ignore_classes =
+      this->declare_parameter("ignore_classes", std::vector<std::string>{"negative"});
+    (void)cls_threshold;
+    (void)ignore_classes;
   }
 
-  armors.reserve(dets.size());
+  Detector::LightParams l_params = {
+    .min_ratio = declare_parameter("light.min_ratio", 0.1),
+    .max_ratio = declare_parameter("light.max_ratio", 0.4),
+    .max_angle = declare_parameter("light.max_angle", 35.0),
+    .min_fill_ratio = declare_parameter("light.min_fill_ratio", 0.8),
+  };
 
-  for (auto & det : dets) {
-    if (det.kpts.size() < 4) continue;
+  Detector::ArmorParams a_params = {
+    .min_light_ratio = declare_parameter("armor.min_light_ratio", 0.7),
+    .min_small_center_distance = declare_parameter("armor.min_small_center_distance", 0.8),
+    .max_small_center_distance = declare_parameter("armor.max_small_center_distance", 3.2),
+    .min_large_center_distance = declare_parameter("armor.min_large_center_distance", 3.2),
+    .max_large_center_distance = declare_parameter("armor.max_large_center_distance", 5.5),
+    .max_angle = declare_parameter("armor.max_angle", 35.0)};
 
-    cv::Rect bbox = cv::boundingRect(det.kpts);
-    cv::Point2f center(bbox.x + bbox.width / 2.0f, bbox.y + bbox.height / 2.0f);
+  // YOLO params
+  auto pkg_path = ament_index_cpp::get_package_share_directory("armor_detector");
+  const std::string default_yolo_model = pkg_path + "/model/yolo.bin";
+  Detector::YoloParams yolo_params;
+  yolo_params.model_path = this->declare_parameter("yolo.model_path", default_yolo_model);
+  yolo_params.score_threshold =
+    static_cast<float>(this->declare_parameter("yolo.score_threshold", 0.30));
+  yolo_params.nms_threshold = static_cast<float>(this->declare_parameter("yolo.nms_threshold", 0.70));
+  yolo_params.nms_top_k = this->declare_parameter("yolo.nms_top_k", 300);
 
-    // 类型判定：Bb 为大装甲；数字类中含"1"(B1/R1)判为大装甲；其余判为小装甲
-    ArmorType atype = ArmorType::SMALL;
-    if (det.class_name == "Bb") {
-      atype = ArmorType::LARGE;
-    } else {
-      bool has_one_digit = false;
-      for (char c : det.class_name) {
-        if (std::isdigit(static_cast<unsigned char>(c)) && c == '1') { has_one_digit = true; break; }
-      }
-      if (has_one_digit) atype = ArmorType::LARGE;
+  {
+    std::ifstream f(yolo_params.model_path);
+    if (!f.good()) {
+      RCLCPP_FATAL(
+        this->get_logger(),
+        "YOLO model file not found: '%s'. Set parameter yolo.model_path or place model at '%s'.",
+        yolo_params.model_path.c_str(), default_yolo_model.c_str());
+      throw std::runtime_error("YOLO model file not found");
     }
-
-    // Move keypoints into Armor to avoid copying vectors
-    armors.emplace_back(det.score, bbox, std::move(det.kpts), center);
-    Armor & armor = armors.back();
-    armor.type = atype;
-    armor.classification_result = det.class_name;  // e.g. "B1", "R3"
-    armor.source_frame = det.frame_id;
-    armor.stamp_sec = det.stamp_sec;
-    armor.stamp_nanosec = det.stamp_nanosec;
-
-    int team_id = -1;
-    for (char c : det.class_name) {
-      char cu = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-      if (cu == 'B') { team_id = 0; break; }
-      if (cu == 'R') { team_id = 1; break; }
-    }
-    armor.team_id = team_id;
   }
 
-  // Latency debug: use detection stamp if present
-  if (debug_ && !armors.empty()) {
-    rclcpp::Time det_ts(armors.front().stamp_sec, armors.front().stamp_nanosec);
-    auto final_time = this->now();
-    auto latency = (final_time - det_ts).seconds() * 1000;
-    RCLCPP_DEBUG_STREAM(this->get_logger(), "Latency: " << latency << "ms");
+  return std::make_unique<Detector>(binary_thres, detect_color, l_params, a_params, yolo_params);
+}
+
+std::vector<Armor> ArmorDetectorNode::detectArmors(
+  const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
+{
+  // Convert ROS img to cv::Mat
+  auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
+
+  // Update params
+  detector_->binary_thres = get_parameter("binary_thres").as_int();
+  detector_->detect_color = get_parameter("detect_color").as_int();
+
+  auto armors = detector_->detect(img);
+
+  auto final_time = this->now();
+  auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;
+  RCLCPP_DEBUG_STREAM(this->get_logger(), "Latency: " << latency << "ms");
+
+  // Publish debug info
+  if (debug_) {
+    detector_->drawResults(img);
+    // Draw camera center
+    cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
+    // Draw latency
+    std::stringstream latency_ss;
+    latency_ss << "Latency: " << std::fixed << std::setprecision(2) << latency << "ms";
+    auto latency_s = latency_ss.str();
+    cv::putText(
+      img, latency_s, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
   }
 
   return armors;
 }
 
-void ArmorDetectorNode::destroyDebugPublishers()
-{
-  armors_data_pub_.reset();
-  number_img_pub_.shutdown();
-  result_img_pub_.shutdown();
-}
-
 void ArmorDetectorNode::createDebugPublishers()
 {
   result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
-  armors_data_pub_ = this->create_publisher<auto_aim_interfaces::msg::DebugArmors>(
-    "/detector/debug_armors", rclcpp::SensorDataQoS());
-  number_img_pub_ = image_transport::create_publisher(this, "/detector/number_img");
+}
+
+void ArmorDetectorNode::destroyDebugPublishers()
+{
+  result_img_pub_.shutdown();
 }
 
 void ArmorDetectorNode::publishMarkers()

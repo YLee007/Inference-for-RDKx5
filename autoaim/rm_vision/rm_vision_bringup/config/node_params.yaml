@@ -24,10 +24,15 @@
 /armor_detector:
   ros__parameters:
     debug: true
-    # CameraInfo topic to subscribe (set to your actual published topic)
-    # e.g. "/hik_camera/camera_info" or "/camera_node/camera_info" or "/camera_info"
     camera_info_topic: "/camera_info"
+    image_topic: "/image_raw"
     detect_color: 0
+
+    yolo.model_path: "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
+    yolo.score_threshold: 0.30
+    yolo.nms_threshold: 0.65
+    yolo.nms_top_k: 300
+
     binary_thres: 78
     light.min_ratio: 0.1
     armor.min_light_ratio: 0.8

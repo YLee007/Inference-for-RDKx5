@@ -1,634 +1,406 @@
+// Copyright (C) 2026
+// Licensed under the MIT License.
+
 #include "armor_detector/yolo.hpp"
-#include "armor_detector/armors_shared.hpp"
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#include <cv_bridge/cv_bridge.h>
 
 #include <algorithm>
-#include <numeric>
 #include <cmath>
-#include <cctype>
-#include <functional>
-#include <iomanip>
-#include <memory>
-#include <cstdint>
-#include <sstream>
-#include <filesystem>
+#include <limits>
 #include <stdexcept>
-#include <string>
-#include <vector>
-#include <mutex>
-#include "dnn_node/util/image_proc.h"
+
+#include <opencv2/dnn/dnn.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "dnn/hb_dnn.h"
+#include "dnn/hb_dnn_ext.h"
 #include "dnn/hb_sys.h"
-#include "rclcpp_components/register_node_macro.hpp"
 
-namespace rm_auto_aim {
+namespace rm_auto_aim
+{
 
-YoloNode::YoloNode(const rclcpp::NodeOptions &options)
-    : YoloNode("yolo_node", options) {}
+static float sigmoid(float x)
+{
+  return 1.0f / (1.0f + std::exp(-x));
+}
 
-YoloNode::YoloNode(const std::string &node_name,
-                       const rclcpp::NodeOptions &options)
-    : hobot::dnn_node::DnnNode(node_name, options) {
-  using std::placeholders::_1;
-
-  this->declare_parameter<std::string>("image_topic", "/image_raw");
-  this->declare_parameter<std::string>("model_file", "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_bgr.bin");
-  this->declare_parameter<std::string>("model_name", "");
-  this->declare_parameter<int>("task_num", 2);
-  this->declare_parameter<std::string>("config_file", "");
-  this->declare_parameter<double>("score_threshold", 0.30);
-  this->declare_parameter<double>("nms_threshold", 0.70);
-  this->declare_parameter<int>("detect_color", -1);
-  this->declare_parameter<bool>("use_image_file", false);
-  this->declare_parameter<std::string>("image_file_path", "");
-  this->declare_parameter<bool>("enable_fps_logging", false);
-
-  std::string image_topic;
-  this->get_parameter("image_topic", image_topic);
-  this->get_parameter("detect_color", detect_color_);
-  this->get_parameter("use_image_file", use_image_file_);
-  this->get_parameter("image_file_path", image_file_path_);
-  this->get_parameter("enable_fps_logging", enable_fps_logging_);
-
-  this->get_logger().set_level((rclcpp::Logger::Level)10); // DEBUG
-
-  if (Init() != 0) {
-    throw std::runtime_error("YoloNode init failed");
-  }
-
-  if (GetModelInputSize(0, model_input_width_, model_input_height_) != 0) {
-    RCLCPP_WARN(this->get_logger(),
-                "GetModelInputSize failed, using defaults %dx%d",
-                model_input_width_, model_input_height_);
-  } else {
-    RCLCPP_INFO(this->get_logger(), "Model input size %dx%d",
-                model_input_width_, model_input_height_);
-    auto *model = this->GetModel();
-    if (model && model->GetInputTensorProperties(input_properties_, 0) == 0) {
-      has_input_properties_ = true;
-      RCLCPP_INFO(this->get_logger(),
-                  "Input layout=%d type=%d dims=[%d,%d,%d,%d]",
-                  input_properties_.tensorLayout,
-                  input_properties_.tensorType,
-                  input_properties_.validShape.dimensionSize[0],
-                  input_properties_.validShape.dimensionSize[1],
-                  input_properties_.validShape.dimensionSize[2],
-                  input_properties_.validShape.dimensionSize[3]);
-    } else {
-      RCLCPP_ERROR(this->get_logger(), "GetInputTensorProperties failed");
-    }
-  }
-
-  if (use_image_file_) {
-    namespace fs = std::filesystem;
-    std::vector<std::string> image_files;
-    try {
-      fs::path path(image_file_path_);
-      if (fs::is_directory(path)) {
-        RCLCPP_INFO(this->get_logger(), "Using image folder for inference: %s",
-                    image_file_path_.c_str());
-        for (const auto &entry : fs::directory_iterator(path)) {
-          if (!entry.is_regular_file()) {
-            continue;
-          }
-          std::string ext = entry.path().extension().string();
-          std::transform(ext.begin(), ext.end(), ext.begin(),
-                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-          if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" ||
-              ext == ".bmp" || ext == ".tif" || ext == ".tiff") {
-            image_files.emplace_back(entry.path().string());
-          }
-        }
-        std::sort(image_files.begin(), image_files.end());
-      } else {
-        image_files.emplace_back(image_file_path_);
-        RCLCPP_INFO(this->get_logger(), "Using image file for inference: %s",
-                    image_file_path_.c_str());
-      }
-    } catch (const fs::filesystem_error &e) {
-      RCLCPP_ERROR(this->get_logger(), "Path error: %s", e.what());
-    }
-
-    if (image_files.empty()) {
-      RCLCPP_ERROR(this->get_logger(),
-                   "No valid image files found in path: %s",
-                   image_file_path_.c_str());
-    } else {
-      for (const auto &file : image_files) {
-        cv::Mat image = cv::imread(file, cv::IMREAD_COLOR);
-        if (image.empty()) {
-          RCLCPP_ERROR(this->get_logger(), "Failed to read image file: %s",
-                       file.c_str());
-          continue;
-        }
-        std_msgs::msg::Header header;
-        header.frame_id = fs::path(file).filename().string();
-        header.stamp = this->now();
-        ProcessImage(image, header, false);
-      }
-    }
-  } else {
-    img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-        image_topic, rclcpp::SensorDataQoS(),
-        std::bind(&YoloNode::FeedImg, this, _1));
-    RCLCPP_INFO(this->get_logger(), "Subscribed image topic: %s",
-                image_topic.c_str());
+static void hbCheck(int ret, const char * what)
+{
+  if (ret != 0) {
+    throw std::runtime_error(std::string(what) + ", ret=" + std::to_string(ret));
   }
 }
 
-int YoloNode::PostProcess(
-    const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output) {
-  if (!rclcpp::ok() || !node_output) {
-    RCLCPP_WARN(this->get_logger(), "Invalid node_output in PostProcess");
-    return -1;
-  }
+static std::vector<std::string> buildClassNames()
+{
+  return {"G", "1", "2", "3", "4", "5", "O", "Bs", "Bb"};
+}
 
-  // Collect detections locally then emit via in-process callback
-  rm_auto_aim::DetectionList out_dets;
+const std::vector<std::string> & Yolo::classNames()
+{
+  static const std::vector<std::string> kNames = buildClassNames();
+  return kNames;
+}
 
-  // 使用自定义输出解析：
-  // 0..7: 四个关键点(TL, BL, BR, TR) 的 x,y
-  // 8: objectness (sigmoid)
-  // 9..12: 颜色分支 (红、蓝、灰、紫)
-  // 13..21: 数字/类别 (G,1,2,3,4,5,O,Bs,Bb)
+struct Yolo::Impl
+{
+  Params params;
 
-  auto parser_output = std::dynamic_pointer_cast<DnnOutput>(node_output);
-  float ratio = 1.0f;
-  int original_w = model_input_width_;
-  int original_h = model_input_height_;
-  float x_offset = 0.0f;
-  float y_offset = 0.0f;
-  if (parser_output) {
-    if (parser_output->ratio > 0.0f) {
-      ratio = parser_output->ratio;
-    }
-    if (parser_output->img_w > 0) {
-      original_w = parser_output->img_w;
-    }
-    if (parser_output->img_h > 0) {
-      original_h = parser_output->img_h;
-    }
-    x_offset = parser_output->x_offset;
-    y_offset = parser_output->y_offset;
-  }
+  hbPackedDNNHandle_t packed = nullptr;
+  hbDNNHandle_t model = nullptr;
 
-  const auto scale_x = [&](float value) {
-    // letterbox 坐标映射：先减去偏移，再缩放到原图
-    float scaled = (value - x_offset) * ratio;
-    if (original_w > 0) {
-      scaled = std::clamp(scaled, 0.0f,
-                          static_cast<float>(original_w - 1));
-    }
-    return scaled;
-  };
-  const auto scale_y = [&](float value) {
-    // letterbox 坐标映射：先减去偏移，再缩放到原图
-    float scaled = (value - y_offset) * ratio;
-    if (original_h > 0) {
-      scaled = std::clamp(scaled, 0.0f,
-                          static_cast<float>(original_h - 1));
-    }
-    return scaled;
-  };
+  hbDNNTensor input;
+  std::vector<hbDNNTensor> outputs;
 
-  if (node_output->output_tensors.empty()) {
-    RCLCPP_ERROR(this->get_logger(), "No output tensors to parse");
-    return -1;
-  }
+  int input_h = 0;
+  int input_w = 0;
+  int output_count = 0;
 
-  auto tensor = node_output->output_tensors[0];
-  tensor->CACHE_INVALIDATE();
-
-  int nd = tensor->properties.validShape.numDimensions;
-  const auto *dim = tensor->properties.validShape.dimensionSize;
-  int rows = 0, cols = 0;
-  if (nd == 3) {
-    rows = static_cast<int>(dim[1]);
-    cols = static_cast<int>(dim[2]);
-  } else if (nd == 2) {
-    rows = static_cast<int>(dim[0]);
-    cols = static_cast<int>(dim[1]);
-  } else if (nd == 4) {
-    // [1, 25200, 22, 1]
-    if (dim[0] == 1 && dim[3] == 1) {
-      rows = static_cast<int>(dim[1]);
-      cols = static_cast<int>(dim[2]);
-    } else if (dim[0] == 1 && dim[1] == 1) {
-      rows = static_cast<int>(dim[2]);
-      cols = static_cast<int>(dim[3]);
-    } else {
-      rows = static_cast<int>(dim[2]);
-      cols = static_cast<int>(dim[3]);
-    }
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "Unsupported tensor dims: %d", nd);
-    return -1;
-  }
-  if (cols < 22) { RCLCPP_ERROR(this->get_logger(), "Expect >=22 columns, got %d", cols); return -1; }
-
-  // Dump raw model output (limited) for inspection
-  size_t total_elems = 1;
-  for (int i = 0; i < nd; ++i) {
-    total_elems *= static_cast<size_t>(dim[i]);
-  }
-  auto *data = tensor->GetTensorData<float>();
-  if (!data) {
-    RCLCPP_ERROR(this->get_logger(), "Tensor data is null");
-    return -1;
-  }
-  size_t dump_n = std::min<size_t>(total_elems, 32);
-  std::ostringstream oss;
-  oss << "Raw output first " << dump_n << "/" << total_elems << " values:";
-  for (size_t i = 0; i < dump_n; ++i) {
-    oss << " " << data[i];
-  }
-  RCLCPP_DEBUG(this->get_logger(), "%s", oss.str().c_str());
-
-  auto sigmoid = [](float x){ return 1.0f / (1.0f + std::exp(-x)); };
-
-  const float conf_thr = score_threshold_;
-  const float nms_thr = nms_threshold_;
-  const int detect_color = detect_color_;
-
-  struct Item { cv::Rect2f box; float class_score; float disp_score; rm_auto_aim::ArmorDetection det; };
-  std::vector<Item> items; items.reserve(rows);
-
-  for (int i = 0; i < rows; ++i) {
-    const float *r = data + i * cols;
-    float obj = sigmoid(r[8]);
-    if (obj < conf_thr) continue;
-
-    // 颜色 argmax 9..12
-    int color_idx = 0; float color_max = r[9];
-    for (int k = 10; k <= 12; ++k) if (r[k] > color_max) { color_max = r[k]; color_idx = k - 9; }
-    if (color_idx >= 2) continue; // 丢弃灰/紫
-    //颜色过滤：detect_color==0 只保留红(丢弃蓝)，detect_color==1 只保留蓝(丢弃红)
-    if (detect_color == 0 && color_idx == 1) continue; // 0: red mode, drop blue
-    if (detect_color == 1 && color_idx == 0) continue; // 1: blue mode, drop red
-
-    // 数字/类别 argmax 13..21
-    int cls_idx = 0; float cls_max = r[13];
-    for (int k = 14; k <= 21; ++k) if (r[k] > cls_max) { cls_max = r[k]; cls_idx = k - 13; }
-
-    // 关键点：模型坐标->原图坐标 (输入顺序 TL, BL, BR, TR)
-    float tlx = scale_x(r[0]); float tly = scale_y(r[1]);
-    float blx = scale_x(r[2]); float bly = scale_y(r[3]);
-    float brx = scale_x(r[4]); float bry = scale_y(r[5]);
-    float trx = scale_x(r[6]); float try_ = scale_y(r[7]);
-
-    // PnP 期望顺序：BL, TL, TR, BR
-    std::vector<cv::Point2f> kps{
-      {blx, bly}, {tlx, tly}, {trx, try_}, {brx, bry}
-    };
-
-    // 外接框用于 NMS
-    float minx = std::min(std::min(tlx, blx), std::min(brx, trx));
-    float maxx = std::max(std::max(tlx, blx), std::max(brx, trx));
-    float miny = std::min(std::min(tly, bly), std::min(bry, try_));
-    float maxy = std::max(std::max(tly, bly), std::max(bry, try_));
-    cv::Rect2f rect(minx, miny, std::max(0.0f, maxx - minx), std::max(0.0f, maxy - miny));
-
-    static const char* num_labels[9] = {"G","1","2","3","4","5","O","Bs","Bb"};
-    std::string label = num_labels[cls_idx];
-    std::string class_name;
-    if (label == "1" || label == "2" || label == "3" || label == "4" || label == "5") {
-      class_name = (color_idx == 0 ? "R" : "B");
-      class_name += label;
-    } else {
-      class_name = label;
-    }
-
-    float final_score = obj * cls_max;   // 与 main.cc 对齐：objectness * 类别最大值
-    float class_score = cls_max;         // 保留类别分支得分以便可视化/调试
-
-    rm_auto_aim::ArmorDetection det_out;
-    det_out.kpts = std::move(kps);
-    det_out.class_name = class_name;
-    det_out.score = final_score;
-    if (parser_output && parser_output->msg_header) {
-      det_out.frame_id = parser_output->msg_header->frame_id;
-      det_out.stamp_sec = parser_output->msg_header->stamp.sec;
-      det_out.stamp_nanosec = parser_output->msg_header->stamp.nanosec;
-    }
-    items.push_back({rect, class_score, final_score, std::move(det_out)});
-  }
-
-  // 简单 NMS
-  auto iou = [](const cv::Rect2f &a, const cv::Rect2f &b){
-    float inter = (a & b).area();
-    float uni = a.area() + b.area() - inter;
-    return uni > 0 ? inter / uni : 0.0f;
-  };
-  std::vector<int> idx(items.size());
-  std::iota(idx.begin(), idx.end(), 0);
-  std::sort(idx.begin(), idx.end(), [&](int i, int j){return items[i].disp_score > items[j].disp_score;});
-  std::vector<char> suppressed(items.size(), 0);
-  for (size_t m = 0; m < idx.size(); ++m) {
-    int i = idx[m];
-    if (suppressed[i]) continue;
-    if (items[i].disp_score < conf_thr) continue; // 与 main.cc 一致，NMS 使用最终得分
-    out_dets.emplace_back(std::move(items[i].det));
-    for (size_t n = m + 1; n < idx.size(); ++n) {
-      int j = idx[n];
-      if (suppressed[j]) continue;
-      if (iou(items[i].box, items[j].box) > nms_thr) suppressed[j] = 1;
-    }
-  }
-
-  // Push detections to downstream consumer (intra-process, zero-copy via move)
-  rm_auto_aim::DetectionBundle bundle;
-  bundle.detections = std::move(out_dets);
-  if (parser_output) {
-    if (parser_output->msg_header) {
-      bundle.header = *parser_output->msg_header;
-    }
-    // 传递原图用于下游可视化
-    bundle.image_bgr = parser_output->image_bgr;
-  }
-
+  Impl(const Params & p) : params(p)
   {
-    std::lock_guard<std::mutex> lk(last_det_mutex_);
-    last_detections_ = bundle.detections; // 备份用于离线文件模式的落盘可视化
-  }
-  rm_auto_aim::emit_detections(std::move(bundle));
+    if (params.model_path.empty()) {
+      throw std::invalid_argument("yolo model_path is empty");
+    }
 
-  // RCLCPP_INFO(this->get_logger(),
-  //              "PostProcess produced %zu detections",
-  //              bundle.detections.size());
-  
-  // // 打印每个检测结果的详细信息
-  // for (size_t i = 0; i < rm_auto_aim::armors_keypoints.size(); ++i) {
-  //   const auto& detection = rm_auto_aim::armors_keypoints[i];
-  //   RCLCPP_INFO(this->get_logger(),
-  //               "Detection %zu: class=%s, score=%.3f, keypoints=%zu",
-  //               i, detection.class_name.c_str(), detection.score, detection.kpts.size());
-  // }
-  return 0;
-}
+    const char * model_file_name = params.model_path.c_str();
+    hbCheck(hbDNNInitializeFromFiles(&packed, &model_file_name, 1), "hbDNNInitializeFromFiles");
 
-int YoloNode::SetNodePara() {
-  RCLCPP_INFO(this->get_logger(), "YoloNode::SetNodePara()");
-  if (!dnn_node_para_ptr_) {
-    RCLCPP_ERROR(this->get_logger(), "dnn_node_para_ptr_ is null");
-    return -1;
-  }
+    const char ** model_name_list = nullptr;
+    int model_count = 0;
+    hbCheck(hbDNNGetModelNameList(&model_name_list, &model_count, packed), "hbDNNGetModelNameList");
+    if (model_count <= 0) {
+      throw std::runtime_error("No model in packed bin");
+    }
 
-  this->get_parameter("model_file", dnn_node_para_ptr_->model_file);
-  this->get_parameter("model_name", dnn_node_para_ptr_->model_name);
-  this->get_parameter("task_num", dnn_node_para_ptr_->task_num);
-  this->get_parameter("score_threshold", score_threshold_);
-  this->get_parameter("nms_threshold", nms_threshold_);
-  this->get_parameter("detect_color", detect_color_);
-  std::string legacy_config;
-  this->get_parameter("config_file", legacy_config);
-  if (!legacy_config.empty()) {
-    RCLCPP_WARN(this->get_logger(),
-                "config_file parameter is provided but ignored; use ROS params instead");
-  }
+    hbCheck(hbDNNGetModelHandle(&model, packed, model_name_list[0]), "hbDNNGetModelHandle");
 
-  RCLCPP_INFO(this->get_logger(),
-              "Params: model_file=%s, model_name=%s, task_num=%d, "
-              "score_threshold=%.3f, nms_threshold=%.3f, detect_color=%d",
-              dnn_node_para_ptr_->model_file.c_str(),
-              dnn_node_para_ptr_->model_name.c_str(),
-              dnn_node_para_ptr_->task_num,
-              score_threshold_,
-              nms_threshold_,
-              detect_color_);
+    int32_t input_count = 0;
+    hbCheck(hbDNNGetInputCount(&input_count, model), "hbDNNGetInputCount");
+    if (input_count != 1) {
+      throw std::runtime_error("Expect 1 input");
+    }
 
-  return 0;
-}
+    hbDNNTensorProperties input_props;
+    hbCheck(hbDNNGetInputTensorProperties(&input_props, model, 0), "hbDNNGetInputTensorProperties");
+    if (input_props.tensorLayout != HB_DNN_LAYOUT_NCHW) {
+      throw std::runtime_error("Expect NCHW input");
+    }
+    if (input_props.validShape.numDimensions != 4) {
+      throw std::runtime_error("Expect 4D input (NCHW)");
+    }
 
-void YoloNode::FeedImg(
-    const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
-  if (!rclcpp::ok() || !img_msg) {
-    RCLCPP_DEBUG(this->get_logger(), "Get img failed");
-    return;
+    input_h = static_cast<int>(input_props.validShape.dimensionSize[2]);
+    input_w = static_cast<int>(input_props.validShape.dimensionSize[3]);
+
+    input.properties = input_props;
+    hbCheck(hbSysAllocCachedMem(&input.sysMem[0], int(3 * input_h * input_w)), "hbSysAllocCachedMem(input)");
+
+    int32_t out_count = 0;
+    hbCheck(hbDNNGetOutputCount(&out_count, model), "hbDNNGetOutputCount");
+    output_count = out_count;
+    if (output_count <= 0) {
+      throw std::runtime_error("No outputs");
+    }
+
+    outputs.resize(output_count);
+    for (int i = 0; i < output_count; ++i) {
+      hbDNNTensorProperties & out_props = outputs[i].properties;
+      hbCheck(hbDNNGetOutputTensorProperties(&out_props, model, i), "hbDNNGetOutputTensorProperties");
+      hbSysMem & mem = outputs[i].sysMem[0];
+      hbCheck(hbSysAllocCachedMem(&mem, out_props.alignedByteSize), "hbSysAllocCachedMem(output)");
+    }
   }
 
-  if (use_image_file_) {
-    RCLCPP_DEBUG(this->get_logger(),
-                 "Image file mode enabled, skip subscribed frame");
-    return;
+  ~Impl()
+  {
+    for (auto & t : outputs) {
+      hbSysFreeMem(&t.sysMem[0]);
+    }
+    hbSysFreeMem(&input.sysMem[0]);
+
+    if (packed) {
+      hbDNNRelease(packed);
+      packed = nullptr;
+    }
   }
 
-  if (img_msg->encoding != "bgr8" && img_msg->encoding != "rgb8") {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), 
-                 "Unsupported image encoding: %s", img_msg->encoding.c_str());
-    return;
-  }
+  static void letterboxRGB(
+    const cv::Mat & rgb, int dst_w, int dst_h, cv::Mat & out,
+    float & scale, int & x_shift, int & y_shift)
+  {
+    if (rgb.empty() || rgb.type() != CV_8UC3) {
+      throw std::invalid_argument("infer expects CV_8UC3 RGB image");
+    }
 
-  const bool is_rgb_input = img_msg->encoding == "rgb8";
-  auto cv_img = cv_bridge::toCvShare(img_msg, img_msg->encoding);
-  ProcessImage(cv_img->image, img_msg->header, is_rgb_input);
-}
+    scale = std::min(1.0f * dst_h / rgb.rows, 1.0f * dst_w / rgb.cols);
+    if (scale <= 0.0f) {
+      throw std::runtime_error("Invalid scale");
+    }
 
-void YoloNode::ProcessImage(const cv::Mat &image,
-                            const std_msgs::msg::Header &header,
-                            bool is_rgb_input) {
-  if (!has_input_properties_) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"),
-                 "Input tensor properties not ready");
-    return;
-  }
+    int new_w = static_cast<int>(std::round(rgb.cols * scale));
+    int new_h = static_cast<int>(std::round(rgb.rows * scale));
 
-  auto dnn_output = std::make_shared<DnnOutput>();
-  // 保留原图以便后处理可视化
-  dnn_output->image_bgr = image.clone();
+    x_shift = (dst_w - new_w) / 2;
+    y_shift = (dst_h - new_h) / 2;
 
-  std::shared_ptr<hobot::dnn_node::DNNTensor> input_tensor = nullptr;
-
-  auto letterbox_resize = [](const cv::Mat &img, int target_w, int target_h,
-                             float &scale, int &x_offset,
-                             int &y_offset) -> cv::Mat {
-    int img_w = img.cols;
-    int img_h = img.rows;
-
-    scale = std::min(static_cast<float>(target_w) / img_w,
-                     static_cast<float>(target_h) / img_h);
-
-    int new_w = static_cast<int>(img_w * scale);
-    int new_h = static_cast<int>(img_h * scale);
+    int x_other = dst_w - new_w - x_shift;
+    int y_other = dst_h - new_h - y_shift;
 
     cv::Mat resized;
-    cv::resize(img, resized, cv::Size(new_w, new_h));
-
-    cv::Mat letterbox_img(target_h, target_w, img.type(),
-                cv::Scalar(127, 127, 127));
-
-    x_offset = (target_w - new_w) / 2;
-    y_offset = (target_h - new_h) / 2;
-
-    resized.copyTo(letterbox_img(cv::Rect(x_offset, y_offset, new_w, new_h)));
-
-    return letterbox_img;
-  };
-
-  float scale;
-  int x_offset, y_offset;
-  cv::Mat letterbox_img =
-      letterbox_resize(image, model_input_width_, model_input_height_, scale,
-                       x_offset, y_offset);
-
-  dnn_output->ratio = 1.0f / scale;
-  dnn_output->resized_w = model_input_width_;
-  dnn_output->resized_h = model_input_height_;
-  dnn_output->img_w = image.cols;
-  dnn_output->img_h = image.rows;
-  dnn_output->x_offset = static_cast<float>(x_offset);
-  dnn_output->y_offset = static_cast<float>(y_offset);
-
-  RCLCPP_DEBUG(this->get_logger(),
-               "Letterbox: input=%dx%d, model=%dx%d, scale=%.3f, offset=(%d,%d), ratio=%.3f",
-               image.cols, image.rows, model_input_width_, model_input_height_,
-               scale, x_offset, y_offset, dnn_output->ratio);
-
-  input_tensor = std::shared_ptr<hobot::dnn_node::DNNTensor>(
-    new hobot::dnn_node::DNNTensor(),
-    [](hobot::dnn_node::DNNTensor *p) {
-      if (p) {
-        if (p->sysMem[0].phyAddr != 0 || p->sysMem[0].virAddr != nullptr) {
-          hbSysFreeMem(&p->sysMem[0]);
-        }
-        delete p;
-      }
-    });
-  input_tensor->sysMem[0].phyAddr = 0;
-  input_tensor->sysMem[0].virAddr = nullptr;
-  input_tensor->sysMem[0].memSize = 0;
-  input_tensor->properties = input_properties_;
-
-  int input_h = model_input_height_;
-  int input_w = model_input_width_;
-  if (input_tensor->properties.validShape.numDimensions == 4) {
-    input_h = input_tensor->properties.validShape.dimensionSize[2];
-    input_w = input_tensor->properties.validShape.dimensionSize[3];
+    cv::resize(rgb, resized, cv::Size(new_w, new_h));
+    cv::copyMakeBorder(
+      resized, out, y_shift, y_other, x_shift, x_other,
+      cv::BORDER_CONSTANT, cv::Scalar(127, 127, 127));
   }
 
-  if (hbSysAllocCachedMem(&input_tensor->sysMem[0],
-                          static_cast<int>(3 * input_h * input_w)) != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"),
-                 "Alloc input tensor memory fail");
-    return;
-  }
+  void fillInputNCHW_RGB_S8Minus128(const cv::Mat & rgb_letterboxed)
+  {
+    uint8_t * data_u8 = const_cast<uint8_t *>(rgb_letterboxed.ptr<uint8_t>());
+    int8_t * data_s8 = reinterpret_cast<int8_t *>(input.sysMem[0].virAddr);
 
-  const uint8_t *data_u8 =
-      reinterpret_cast<const uint8_t *>(letterbox_img.ptr<uint8_t>());
-  auto *data_s8 =
-      reinterpret_cast<int8_t *>(input_tensor->sysMem[0].virAddr);
-
-  for (int h = 0; h < input_h; ++h) {
-    const uint8_t *row = data_u8 + h * input_w * 3;
-    for (int w = 0; w < input_w; ++w) {
-      int idx = h * input_w + w;
-      const uint8_t *pix = row + w * 3;
-      // 模型张量期望 RGB 排列
-      if (is_rgb_input) {
-        data_s8[(0 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[0] - 128); // R
-        data_s8[(1 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[1] - 128); // G
-        data_s8[(2 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[2] - 128); // B
-      } else {
-        data_s8[(0 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[2] - 128); // R
-        data_s8[(1 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[1] - 128); // G
-        data_s8[(2 * input_h * input_w) + idx] =
-            static_cast<int8_t>(pix[0] - 128); // B
+    for (int h = 0; h < input_h; ++h) {
+      for (int w = 0; w < input_w; ++w) {
+        const uint8_t r = data_u8[h * input_w * 3 + w * 3 + 0];
+        const uint8_t g = data_u8[h * input_w * 3 + w * 3 + 1];
+        const uint8_t b = data_u8[h * input_w * 3 + w * 3 + 2];
+        data_s8[(0 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(r - 128);
+        data_s8[(1 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(g - 128);
+        data_s8[(2 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(b - 128);
       }
     }
   }
-  hbSysFlushMem(&input_tensor->sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
 
-  auto inputs =
-      std::vector<std::shared_ptr<hobot::dnn_node::DNNTensor>>{input_tensor};
-  const auto &p = input_tensor->properties;
-  RCLCPP_DEBUG(this->get_logger(),
-               "Input tensor check: layout=%d type=%d "
-               "valid=[%d,%d,%d,%d] aligned=[%d,%d,%d,%d] memSize=%u",
-               p.tensorLayout, p.tensorType,
-               p.validShape.dimensionSize[0], p.validShape.dimensionSize[1],
-               p.validShape.dimensionSize[2], p.validShape.dimensionSize[3],
-               p.alignedShape.dimensionSize[0], p.alignedShape.dimensionSize[1],
-               p.alignedShape.dimensionSize[2], p.alignedShape.dimensionSize[3],
-               input_tensor->sysMem[0].memSize);
+  std::vector<Yolo::Detection> postprocess(
+    const cv::Mat & orig_rgb,
+    const hbDNNTensor & out_tensor,
+    float scale, int x_shift, int y_shift)
+  {
+    hbSysFlushMem(const_cast<hbSysMem *>(&out_tensor.sysMem[0]), HB_SYS_MEM_CACHE_INVALIDATE);
 
-  dnn_output->msg_header =
-      std::make_shared<std_msgs::msg::Header>(header);
+    const auto & vshape = out_tensor.properties.validShape;
+    const auto qtype = out_tensor.properties.quantiType;
 
-  dnn_output->model_w = model_input_width_;
-  dnn_output->model_h = model_input_height_;
-
-  const bool sync_mode = use_image_file_;
-  int ret = Run(inputs, dnn_output, sync_mode);
-  if (ret != 0 && ret != HB_DNN_TASK_NUM_EXCEED_LIMIT) {
-    RCLCPP_ERROR(rclcpp::get_logger("yolo_node"), "Run inference fail!");
-    return;
-  }
-
-  if (use_image_file_) {
-    std::vector<ArmorDetection> dets_copy;
-    {
-      std::lock_guard<std::mutex> lk(last_det_mutex_);
-      dets_copy = last_detections_;
-    }
-
-    cv::Mat vis = image.clone();
-    for (const auto &det : dets_copy) {
-      if (det.kpts.size() >= 4) {
-        std::vector<cv::Point> poly;
-        poly.reserve(det.kpts.size());
-        for (const auto &p : det.kpts) {
-          poly.emplace_back(cv::Point(cvRound(p.x), cvRound(p.y)));
-        }
-        cv::polylines(vis, poly, true, cv::Scalar(0, 255, 0), 2);
-        std::ostringstream label;
-        label << det.class_name << " " << std::fixed << std::setprecision(2)
-              << det.score;
-        cv::putText(vis, label.str(), poly.front(),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
-      }
-    }
-    namespace fs = std::filesystem;
-    fs::path out_dir("output");
-    std::error_code ec;
-    fs::create_directories(out_dir, ec);
-    fs::path fname(header.frame_id);
-    if (fname.empty()) fname = "frame.png";
-    if (fname.extension().empty()) fname += ".png";
-    fs::path out_path = out_dir / fname;
-    if (cv::imwrite(out_path.string(), vis)) {
-      RCLCPP_INFO(this->get_logger(), "Saved visualization to %s",
-                  out_path.string().c_str());
+    int nd = vshape.numDimensions;
+    int rows = 0;
+    int cols = 0;
+    if (nd == 4) {
+      rows = static_cast<int>(vshape.dimensionSize[1]);
+      cols = static_cast<int>(vshape.dimensionSize[2]);
+    } else if (nd == 3) {
+      rows = static_cast<int>(vshape.dimensionSize[1]);
+      cols = static_cast<int>(vshape.dimensionSize[2]);
+    } else if (nd == 2) {
+      rows = static_cast<int>(vshape.dimensionSize[0]);
+      cols = static_cast<int>(vshape.dimensionSize[1]);
     } else {
-      RCLCPP_WARN(this->get_logger(), "Failed to save visualization to %s",
-                  out_path.string().c_str());
+      throw std::runtime_error("Unsupported output dims");
     }
-  }
 
-  UpdateFps();
+    if (cols != 22) {
+      int64_t total = 1;
+      for (int i = 0; i < nd; ++i) {
+        total *= vshape.dimensionSize[i];
+      }
+      if (total % 22 == 0) {
+        cols = 22;
+        rows = static_cast<int>(total / 22);
+      }
+    }
+    if (cols != 22) {
+      throw std::runtime_error("Expect 22 columns output");
+    }
+
+    int64_t total_elems = static_cast<int64_t>(rows) * static_cast<int64_t>(cols);
+
+    float * data = nullptr;
+    std::vector<float> deq;
+
+    if (qtype == SHIFT) {
+      deq.resize(total_elems);
+      const int8_t * src = reinterpret_cast<int8_t *>(out_tensor.sysMem[0].virAddr);
+      int shift = (out_tensor.properties.shift.shiftData ? out_tensor.properties.shift.shiftData[0] : 0);
+      float s = 1.0f / static_cast<float>(1 << shift);
+      for (int64_t i = 0; i < total_elems; ++i) {
+        deq[i] = src[i] * s;
+      }
+      data = deq.data();
+    } else if (qtype == SCALE) {
+      deq.resize(total_elems);
+      const int8_t * src = reinterpret_cast<int8_t *>(out_tensor.sysMem[0].virAddr);
+      float s = (out_tensor.properties.scale.scaleData ? out_tensor.properties.scale.scaleData[0] : 1.0f);
+      for (int64_t i = 0; i < total_elems; ++i) {
+        deq[i] = src[i] * s;
+      }
+      data = deq.data();
+    } else {
+      data = reinterpret_cast<float *>(out_tensor.sysMem[0].virAddr);
+    }
+
+    const float conf_thr = params.score_threshold;
+    const float nms_thr = params.nms_threshold;
+
+    const float ratio = (scale > 0.0f ? 1.0f / scale : 1.0f);
+    const int original_w = orig_rgb.cols;
+    const int original_h = orig_rgb.rows;
+    const float x_offset = static_cast<float>(x_shift);
+    const float y_offset = static_cast<float>(y_shift);
+
+    auto scale_x = [&](float value) {
+      float scaled = (value - x_offset) * ratio;
+      if (original_w > 0) {
+        scaled = std::min(std::max(scaled, 0.0f), static_cast<float>(original_w - 1));
+      }
+      return scaled;
+    };
+    auto scale_y = [&](float value) {
+      float scaled = (value - y_offset) * ratio;
+      if (original_h > 0) {
+        scaled = std::min(std::max(scaled, 0.0f), static_cast<float>(original_h - 1));
+      }
+      return scaled;
+    };
+
+    struct Candidate
+    {
+      cv::Rect box;
+      float score;
+      Yolo::Detection det;
+    };
+
+    std::vector<Candidate> candidates;
+    candidates.reserve(rows);
+    std::vector<cv::Rect> nms_boxes;
+    std::vector<float> nms_scores;
+
+    for (int i = 0; i < rows; ++i) {
+      const float * r = data + i * cols;
+
+      float obj = sigmoid(r[8]);
+      if (obj < conf_thr) {
+        continue;
+      }
+
+      // color logits at [9..12]
+      int color_idx = 0;
+      float color_max = r[9];
+      for (int k = 10; k <= 12; ++k) {
+        if (r[k] > color_max) {
+          color_max = r[k];
+          color_idx = k - 9;
+        }
+      }
+
+      // Drop gray/purple
+      if (color_idx >= 2) {
+        continue;
+      }
+      if (params.detect_color == 0 && color_idx == 1) {
+        continue;
+      }
+      if (params.detect_color == 1 && color_idx == 0) {
+        continue;
+      }
+
+      // class logits at [13..21]
+      int cls_idx = 0;
+      float cls_max = r[13];
+      for (int k = 14; k <= 21; ++k) {
+        if (r[k] > cls_max) {
+          cls_max = r[k];
+          cls_idx = k - 13;
+        }
+      }
+
+      // keypoints on resized input: TL,BL,BR,TR
+      float tlx = scale_x(r[0]);
+      float tly = scale_y(r[1]);
+      float blx = scale_x(r[2]);
+      float bly = scale_y(r[3]);
+      float brx = scale_x(r[4]);
+      float bry = scale_y(r[5]);
+      float trx = scale_x(r[6]);
+      float try_ = scale_y(r[7]);
+
+      float minx = std::min(std::min(tlx, blx), std::min(brx, trx));
+      float maxx = std::max(std::max(tlx, blx), std::max(brx, trx));
+      float miny = std::min(std::min(tly, bly), std::min(bry, try_));
+      float maxy = std::max(std::max(tly, bly), std::max(bry, try_));
+
+      cv::Rect rect(
+        static_cast<int>(minx), static_cast<int>(miny),
+        static_cast<int>(std::max(0.0f, maxx - minx)),
+        static_cast<int>(std::max(0.0f, maxy - miny)));
+      if (rect.width <= 0 || rect.height <= 0) {
+        continue;
+      }
+
+      float score = obj * cls_max;
+      if (score < conf_thr) {
+        continue;
+      }
+
+      Yolo::Detection det;
+      det.kpts = {cv::Point2f(tlx, tly), cv::Point2f(blx, bly), cv::Point2f(brx, bry), cv::Point2f(trx, try_)};
+      det.color_idx = color_idx;
+      det.cls_idx = cls_idx;
+      det.obj = obj;
+      det.cls_score = cls_max;
+      det.score = score;
+
+      candidates.push_back({rect, score, det});
+      nms_boxes.push_back(rect);
+      nms_scores.push_back(score);
+    }
+
+    std::vector<int> indices;
+    cv::dnn::NMSBoxes(nms_boxes, nms_scores, conf_thr, nms_thr, indices, 1.0f, params.nms_top_k);
+
+    std::vector<Yolo::Detection> kept;
+    kept.reserve(indices.size());
+    for (int idx : indices) {
+      if (idx >= 0 && idx < static_cast<int>(candidates.size())) {
+        kept.push_back(candidates[idx].det);
+      }
+    }
+
+    return kept;
+  }
+};
+
+Yolo::Yolo(const Params & params) : impl_(std::make_unique<Impl>(params))
+{
 }
 
-void YoloNode::UpdateFps() {
-  if (!enable_fps_logging_) {
-    return;
-  }
-  auto now = this->now();
-  if (has_last_frame_time_) {
-    double dt = (now - last_frame_time_).seconds();
-    if (dt > 0.0) {
-      double fps = 1.0 / dt;
-      RCLCPP_INFO(this->get_logger(), "Current FPS: %.2f", fps);
-    }
-  }
-  last_frame_time_ = now;
-  has_last_frame_time_ = true;
+Yolo::~Yolo() = default;
+
+std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
+{
+  float scale = 1.0f;
+  int x_shift = 0;
+  int y_shift = 0;
+
+  cv::Mat letterboxed;
+  Impl::letterboxRGB(rgb, impl_->input_w, impl_->input_h, letterboxed, scale, x_shift, y_shift);
+
+  impl_->fillInputNCHW_RGB_S8Minus128(letterboxed);
+
+  hbSysFlushMem(&impl_->input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
+
+  hbDNNInferCtrlParam infer_ctrl_param;
+  HB_DNN_INITIALIZE_INFER_CTRL_PARAM(&infer_ctrl_param);
+
+  hbDNNTaskHandle_t task_handle = nullptr;
+
+  hbDNNTensor * out_ptrs = impl_->outputs.data();
+  hbCheck(
+    hbDNNInfer(&task_handle, &out_ptrs, &impl_->input, impl_->model, &infer_ctrl_param),
+    "hbDNNInfer");
+  hbCheck(hbDNNWaitTaskDone(task_handle, 0), "hbDNNWaitTaskDone");
+
+  // Expect output[0] contains the proposals with 22 cols
+  auto dets = impl_->postprocess(rgb, impl_->outputs.at(0), scale, x_shift, y_shift);
+
+  hbDNNReleaseTask(task_handle);
+  return dets;
 }
 
 }  // namespace rm_auto_aim
-
-RCLCPP_COMPONENTS_REGISTER_NODE(rm_auto_aim::YoloNode)
