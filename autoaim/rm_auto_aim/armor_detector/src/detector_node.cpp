@@ -72,6 +72,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 
   // Debug Publishers
   debug_ = this->declare_parameter("debug", false);
+  debug_result_compressed_ = this->declare_parameter("debug_result_compressed", true);
   if (debug_) {
     createDebugPublishers();
   }
@@ -90,7 +91,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-    camera_info_topic, rclcpp::SensorDataQoS(),
+    camera_info_topic, rclcpp::SensorDataQoS().keep_last(1),
     [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
       cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
       cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
@@ -99,7 +100,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-    image_topic, rclcpp::SensorDataQoS(),
+    image_topic, rclcpp::SensorDataQoS().keep_last(1),
     std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
 }
 
@@ -272,6 +273,21 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     cv::putText(
       img, latency_s, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
     result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
+
+    if (debug_result_compressed_ && result_img_compressed_pub_) {
+      cv::Mat bgr;
+      cv::cvtColor(img, bgr, cv::COLOR_RGB2BGR);
+
+      std::vector<uchar> buf;
+      std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 80};
+      if (cv::imencode(".jpg", bgr, buf, params)) {
+        sensor_msgs::msg::CompressedImage msg;
+        msg.header = img_msg->header;
+        msg.format = "jpeg";
+        msg.data = std::move(buf);
+        result_img_compressed_pub_->publish(msg);
+      }
+    }
   }
 
   return armors;
@@ -280,11 +296,16 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 void ArmorDetectorNode::createDebugPublishers()
 {
   result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
+  if (debug_result_compressed_) {
+    result_img_compressed_pub_ = this->create_publisher<sensor_msgs::msg::CompressedImage>(
+      "/detector/result_img/compressed", rclcpp::SensorDataQoS());
+  }
 }
 
 void ArmorDetectorNode::destroyDebugPublishers()
 {
   result_img_pub_.shutdown();
+  result_img_compressed_pub_.reset();
 }
 
 void ArmorDetectorNode::publishMarkers()

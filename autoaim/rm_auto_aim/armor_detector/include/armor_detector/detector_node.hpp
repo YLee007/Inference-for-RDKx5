@@ -13,6 +13,7 @@
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -74,9 +75,11 @@ private:
 
   // Debug information
   bool debug_;
+  bool debug_result_compressed_;
   std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
   image_transport::Publisher result_img_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr result_img_compressed_pub_;
 };
 
 }  // namespace rm_auto_aim
