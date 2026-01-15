@@ -66,8 +66,7 @@ struct Armor
       const cv::Rect & bbox,
       std::vector<cv::Point2f> armor_keypoints,
       const cv::Point2f & center)
-    : number(),
-    center(center),
+    :center(center),
     center_norm(),
     type(ArmorType::INVALID),
     bbox(bbox),
