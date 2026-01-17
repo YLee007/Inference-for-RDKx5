@@ -60,6 +60,8 @@ public:
 
   std::vector<Armor> detect(const cv::Mat & input);
 
+  Yolo::Timings lastYoloTimings() const;
+
   // Legacy traditional pipeline functions kept in source for reference.
   // They are no longer used after switching to YOLO.
   std::vector<Light> findLights(const cv::Mat & rbg_img, const cv::Mat & binary_img);

@@ -99,6 +99,14 @@ std::vector<Armor> Detector::detect(const cv::Mat & input)
   return armors_;
 }
 
+Yolo::Timings Detector::lastYoloTimings() const
+{
+  if (yolo_) {
+    return yolo_->lastTimings();
+  }
+  return Yolo::Timings{};
+}
+
 std::vector<Light> Detector::findLights(const cv::Mat & rgb_img, const cv::Mat & binary_img)
 {
   using std::vector;

@@ -4,6 +4,7 @@
 #include "armor_detector/yolo.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -44,6 +45,7 @@ const std::vector<std::string> & Yolo::classNames()
 struct Yolo::Impl
 {
   Params params;
+  Timings last_timings;
 
   hbPackedDNNHandle_t packed = nullptr;
   hbDNNHandle_t model = nullptr;
@@ -374,6 +376,9 @@ Yolo::~Yolo() = default;
 
 std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
 {
+  using clock = std::chrono::steady_clock;
+  auto t0 = clock::now();
+
   float scale = 1.0f;
   int x_shift = 0;
   int y_shift = 0;
@@ -382,6 +387,8 @@ std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
   Impl::letterboxRGB(rgb, impl_->input_w, impl_->input_h, letterboxed, scale, x_shift, y_shift);
 
   impl_->fillInputNCHW_RGB_S8Minus128(letterboxed);
+
+  auto t1 = clock::now();
 
   hbSysFlushMem(&impl_->input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
 
@@ -396,11 +403,26 @@ std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
     "hbDNNInfer");
   hbCheck(hbDNNWaitTaskDone(task_handle, 0), "hbDNNWaitTaskDone");
 
+  auto t2 = clock::now();
+
   // Expect output[0] contains the proposals with 22 cols
   auto dets = impl_->postprocess(rgb, impl_->outputs.at(0), scale, x_shift, y_shift);
 
+  auto t3 = clock::now();
+
+  impl_->last_timings.preprocess_ms =
+    std::chrono::duration<double, std::milli>(t1 - t0).count();
+  impl_->last_timings.infer_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+  impl_->last_timings.postprocess_ms =
+    std::chrono::duration<double, std::milli>(t3 - t2).count();
+
   hbDNNReleaseTask(task_handle);
   return dets;
+}
+
+const Yolo::Timings & Yolo::lastTimings() const
+{
+  return impl_->last_timings;
 }
 
 }  // namespace rm_auto_aim

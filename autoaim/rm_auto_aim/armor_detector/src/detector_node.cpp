@@ -7,7 +7,6 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/convert.h>
 
-#include <image_transport/image_transport.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -18,6 +17,7 @@
 
 // STD
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -249,6 +249,8 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
 std::vector<Armor> ArmorDetectorNode::detectArmors(
   const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
+  using clock = std::chrono::steady_clock;
+
   // Convert ROS img to cv::Mat
   auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
 
@@ -257,6 +259,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   detector_->detect_color = get_parameter("detect_color").as_int();
 
   auto armors = detector_->detect(img);
+  const auto yolo_t = detector_->lastYoloTimings();
 
   auto final_time = this->now();
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;
@@ -264,6 +267,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 
   // Publish debug info
   if (debug_) {
+    auto t_draw0 = clock::now();
     detector_->drawResults(img);
     // Draw camera center
     cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
@@ -273,9 +277,13 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     auto latency_s = latency_ss.str();
     cv::putText(
       img, latency_s, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
 
+    auto t_draw1 = clock::now();
+    double draw_ms = std::chrono::duration<double, std::milli>(t_draw1 - t_draw0).count();
+
+    double jpeg_ms = 0.0;
     if (debug_result_compressed_ && result_img_compressed_pub_) {
+      auto t_jpeg0 = clock::now();
       cv::Mat bgr;
       cv::cvtColor(img, bgr, cv::COLOR_RGB2BGR);
 
@@ -288,7 +296,14 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
         msg.data = std::move(buf);
         result_img_compressed_pub_->publish(msg);
       }
+      auto t_jpeg1 = clock::now();
+      jpeg_ms = std::chrono::duration<double, std::milli>(t_jpeg1 - t_jpeg0).count();
     }
+
+    RCLCPP_INFO(
+      this->get_logger(),
+      "timing(ms) pre=%.2f infer=%.2f post=%.2f draw=%.2f jpeg=%.2f",
+      yolo_t.preprocess_ms, yolo_t.infer_ms, yolo_t.postprocess_ms, draw_ms, jpeg_ms);
   }
 
   return armors;
@@ -296,7 +311,6 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 
 void ArmorDetectorNode::createDebugPublishers()
 {
-  result_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
   if (debug_result_compressed_) {
     result_img_compressed_pub_ = this->create_publisher<sensor_msgs::msg::CompressedImage>(
       "/detector/result_img/compressed", rclcpp::SensorDataQoS());
@@ -305,7 +319,6 @@ void ArmorDetectorNode::createDebugPublishers()
 
 void ArmorDetectorNode::destroyDebugPublishers()
 {
-  result_img_pub_.shutdown();
   result_img_compressed_pub_.reset();
 }
 

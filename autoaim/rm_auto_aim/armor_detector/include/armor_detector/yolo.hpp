@@ -40,6 +40,13 @@ public:
     float score = 0.0f;  // obj * cls_score
   };
 
+  struct Timings
+  {
+    double preprocess_ms = 0.0;
+    double infer_ms = 0.0;
+    double postprocess_ms = 0.0;
+  };
+
   explicit Yolo(const Params & params);
   ~Yolo();
 
@@ -47,6 +54,8 @@ public:
   Yolo & operator=(const Yolo &) = delete;
 
   std::vector<Detection> infer(const cv::Mat & rgb);
+
+  const Timings & lastTimings() const;
 
   static const std::vector<std::string> & classNames();
 
