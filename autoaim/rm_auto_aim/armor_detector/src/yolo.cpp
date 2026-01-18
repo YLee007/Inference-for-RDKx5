@@ -133,6 +133,14 @@ struct Yolo::Impl
       throw std::invalid_argument("infer expects CV_8UC3 RGB image");
     }
 
+    if (rgb.cols == dst_w && rgb.rows == dst_h) {
+      scale = 1.0f;
+      x_shift = 0;
+      y_shift = 0;
+      out = rgb;
+      return;
+    }
+
     scale = std::min(1.0f * dst_h / rgb.rows, 1.0f * dst_w / rgb.cols);
     if (scale <= 0.0f) {
       throw std::runtime_error("Invalid scale");

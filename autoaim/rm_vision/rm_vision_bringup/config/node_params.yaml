@@ -3,14 +3,12 @@
     camera_info_url: package://rm_vision_bringup/config/camera_info.yaml
     exposure_time: 2000
     gain: 5.0
-    use_shared_memory: false
 
 /camera_node:
   ros__parameters:
     camera_info_url: package://rm_vision_bringup/config/camera_info.yaml
     exposure_time: 2000
     gain: 5.0
-    use_shared_memory: false
 
 /serial_driver:
   ros__parameters:
@@ -68,22 +66,6 @@
       car_attack_threshold: 85.0
       outpost_attack_threshold: 5.0
       threshold_fix: 0.0
-
-
-/yolo_node:
-  ros__parameters:
-    # Image topic to subscribe (set to your actual published image topic)
-    image_topic: "/image_raw"
-    model_file: "/home/sunrise/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
-    model_name: ""
-    task_num: 4
-    score_threshold: 0.30
-    nms_threshold: 0.65
-    detect_color: 0
-    use_image_file: true
-    image_file_path: "/home/sunrise/dataset"
-    enable_fps_logging: false
-
 
 # /rm_auto_record:
 #   ros__parameters:
