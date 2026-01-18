@@ -10,6 +10,7 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <rcutils/logging.h>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/qos.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -73,6 +74,9 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   // Debug Publishers
   debug_ = this->declare_parameter("debug", false);
   debug_timing_every_n_ = this->declare_parameter("debug_timing_every_n", 20);
+  rcutils_logging_set_logger_level(
+    this->get_logger().get_name(),
+    debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
   if (debug_) {
     createDebugPublishers();
   }
@@ -87,6 +91,9 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   debug_cb_handle_ =
     debug_param_sub_->add_parameter_callback("debug", [this](const rclcpp::Parameter & p) {
       debug_ = p.as_bool();
+      rcutils_logging_set_logger_level(
+        this->get_logger().get_name(),
+        debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
       debug_ ? createDebugPublishers() : destroyDebugPublishers();
     });
 

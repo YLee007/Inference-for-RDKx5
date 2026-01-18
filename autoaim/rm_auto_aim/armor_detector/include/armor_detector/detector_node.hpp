@@ -7,6 +7,8 @@
 
 // ROS
 #include <geometry_msgs/msg/point.hpp>
+#include <image_transport/image_transport.hpp>
+#include <image_transport/publisher.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
