@@ -45,6 +45,14 @@ public:
     double preprocess_ms = 0.0;
     double infer_ms = 0.0;
     double postprocess_ms = 0.0;
+    int src_w = 0;
+    int src_h = 0;
+    int input_w = 0;
+    int input_h = 0;
+    bool letterbox_used = false;
+    float scale = 1.0f;
+    int x_shift = 0;
+    int y_shift = 0;
   };
 
   explicit Yolo(const Params & params);

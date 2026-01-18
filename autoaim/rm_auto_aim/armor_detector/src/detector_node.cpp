@@ -74,9 +74,14 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   // Debug Publishers
   debug_ = this->declare_parameter("debug", false);
   debug_timing_every_n_ = this->declare_parameter("debug_timing_every_n", 20);
-  rcutils_logging_set_logger_level(
-    this->get_logger().get_name(),
-    debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
+  {
+    const auto ret = rcutils_logging_set_logger_level(
+      this->get_logger().get_name(),
+      debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
+    if (ret != RCUTILS_RET_OK) {
+      RCLCPP_WARN(this->get_logger(), "Failed to set logger level, rcutils_ret_t=%d", ret);
+    }
+  }
   if (debug_) {
     createDebugPublishers();
   }
@@ -91,9 +96,12 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   debug_cb_handle_ =
     debug_param_sub_->add_parameter_callback("debug", [this](const rclcpp::Parameter & p) {
       debug_ = p.as_bool();
-      rcutils_logging_set_logger_level(
+      const auto ret = rcutils_logging_set_logger_level(
         this->get_logger().get_name(),
         debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
+      if (ret != RCUTILS_RET_OK) {
+        RCLCPP_WARN(this->get_logger(), "Failed to set logger level, rcutils_ret_t=%d", ret);
+      }
       debug_ ? createDebugPublishers() : destroyDebugPublishers();
     });
 
@@ -256,6 +264,8 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
   using clock = std::chrono::steady_clock;
+  static auto last_fps_time = clock::now();
+  static uint64_t frame_count_since = 0;
 
   // Convert ROS img to cv::Mat
   auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
@@ -290,10 +300,26 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
 
     debug_frame_count_++;
+    frame_count_since++;
     if (debug_timing_every_n_ > 0 && (debug_frame_count_ % static_cast<uint64_t>(debug_timing_every_n_)) == 0) {
+      auto now = clock::now();
+      double fps = 0.0;
+      auto dt = std::chrono::duration<double>(now - last_fps_time).count();
+      if (dt > 0.0) {
+        fps = static_cast<double>(frame_count_since) / dt;
+      }
+      last_fps_time = now;
+      frame_count_since = 0;
       RCLCPP_DEBUG(
         this->get_logger(),
-        "timing(ms) pre=%.2f infer=%.2f post=%.2f draw=%.2f",
+        "input[%s %dx%d] model[%dx%d] letterbox=%d scale=%.3f shift=(%d,%d) fps=%.2f timing(ms) pre=%.2f infer=%.2f post=%.2f draw=%.2f",
+        img_msg->encoding.c_str(),
+        yolo_t.src_w, yolo_t.src_h,
+        yolo_t.input_w, yolo_t.input_h,
+        yolo_t.letterbox_used ? 1 : 0,
+        yolo_t.scale,
+        yolo_t.x_shift, yolo_t.y_shift,
+        fps,
         yolo_t.preprocess_ms, yolo_t.infer_ms, yolo_t.postprocess_ms, draw_ms);
     }
   }

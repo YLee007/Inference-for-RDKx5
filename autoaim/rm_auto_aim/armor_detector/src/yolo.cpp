@@ -423,6 +423,14 @@ std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
   impl_->last_timings.infer_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
   impl_->last_timings.postprocess_ms =
     std::chrono::duration<double, std::milli>(t3 - t2).count();
+  impl_->last_timings.src_w = rgb.cols;
+  impl_->last_timings.src_h = rgb.rows;
+  impl_->last_timings.input_w = impl_->input_w;
+  impl_->last_timings.input_h = impl_->input_h;
+  impl_->last_timings.scale = scale;
+  impl_->last_timings.x_shift = x_shift;
+  impl_->last_timings.y_shift = y_shift;
+  impl_->last_timings.letterbox_used = !(rgb.cols == impl_->input_w && rgb.rows == impl_->input_h);
 
   hbDNNReleaseTask(task_handle);
   return dets;
