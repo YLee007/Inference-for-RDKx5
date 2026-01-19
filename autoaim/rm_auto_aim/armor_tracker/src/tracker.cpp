@@ -19,6 +19,15 @@
 
 namespace rm_auto_aim
 {
+static std::string strip_color_prefix(const std::string & id)
+{
+  const auto pos = id.find('_');
+  if (pos == std::string::npos || pos + 1 >= id.size()) {
+    return id;
+  }
+  return id.substr(pos + 1);
+}
+
 Tracker::Tracker(double max_match_distance, double max_match_yaw_diff_)
 : tracker_state(LOST),
   tracked_id(std::string("")),
@@ -217,9 +226,10 @@ void Tracker::initEKF(const Armor & a)
 
 void Tracker::updateArmorsNum(const Armor & armor)
 {
-  if (armor.type == "large" && (tracked_id == "3" || tracked_id == "4" || tracked_id == "5")) {
+  const std::string base_id = strip_color_prefix(tracked_id);
+  if (armor.type == "large" && (base_id == "3" || base_id == "4" || base_id == "5")) {
     tracked_armors_num = ArmorsNum::BALANCE_2;
-  } else if (tracked_id == "outpost") {
+  } else if (base_id == "outpost") {
     tracked_armors_num = ArmorsNum::OUTPOST_3;
   } else {
     tracked_armors_num = ArmorsNum::NORMAL_4;
