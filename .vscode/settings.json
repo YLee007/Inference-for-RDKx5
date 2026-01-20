@@ -86,12 +86,5 @@
     "C_Cpp.errorSquiggles": "disabled"
     "files.exclude": {
         "**/autoaim/.vscode": true,
-        "**/autoaim/rm_gimbal_description": true,
-        "**/autoaim/vision_attacker": true,
-        "**/autoaim/vision_interfaces": true,
-        "**/autoaim/vision_serial_driver": true
-        "**/autoaim/cal_data.py": true
-        "**/dnn_benchmark_example": true
-        "**/dnn_node_example": true
     }
 }
