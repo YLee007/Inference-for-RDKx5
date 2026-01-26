@@ -72,7 +72,7 @@ public:
       RCLCPP_INFO(this->get_logger(), "Publishing image!");
 
       image_msg_.header.frame_id = "camera_optical_frame";
-      image_msg_.encoding = "bgr8";
+      image_msg_.encoding = "rgb8";
 
       while (rclcpp::ok()) {
         nRet = MV_CC_GetImageBuffer(camera_handle_, &out_frame, 1000);

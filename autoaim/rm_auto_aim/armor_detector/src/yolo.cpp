@@ -167,14 +167,21 @@ struct Yolo::Impl
     uint8_t * data_u8 = const_cast<uint8_t *>(rgb_letterboxed.ptr<uint8_t>());
     int8_t * data_s8 = reinterpret_cast<int8_t *>(input.sysMem[0].virAddr);
 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for (int h = 0; h < input_h; ++h) {
+      const int row_offset = h * input_w * 3;
+      const int plane_offset = h * input_w;
       for (int w = 0; w < input_w; ++w) {
-        const uint8_t r = data_u8[h * input_w * 3 + w * 3 + 0];
-        const uint8_t g = data_u8[h * input_w * 3 + w * 3 + 1];
-        const uint8_t b = data_u8[h * input_w * 3 + w * 3 + 2];
-        data_s8[(0 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(r - 128);
-        data_s8[(1 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(g - 128);
-        data_s8[(2 * input_h * input_w) + h * input_w + w] = static_cast<int8_t>(b - 128);
+        const int idx = row_offset + w * 3;
+        const uint8_t r = data_u8[idx + 0];
+        const uint8_t g = data_u8[idx + 1];
+        const uint8_t b = data_u8[idx + 2];
+        const int dst = plane_offset + w;
+        data_s8[(0 * input_h * input_w) + dst] = static_cast<int8_t>(r - 128);
+        data_s8[(1 * input_h * input_w) + dst] = static_cast<int8_t>(g - 128);
+        data_s8[(2 * input_h * input_w) + dst] = static_cast<int8_t>(b - 128);
       }
     }
   }

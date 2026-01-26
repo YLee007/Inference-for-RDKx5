@@ -18,6 +18,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(OpenMP)
 ament_auto_find_build_dependencies()
 
 ###########
@@ -33,6 +34,11 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+
+if(OpenMP_CXX_FOUND)
+  target_compile_options(${PROJECT_NAME} PRIVATE ${OpenMP_CXX_FLAGS})
+  target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
+endif()
 
 # RDK libdnn headers/libraries
 target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/dnn)
