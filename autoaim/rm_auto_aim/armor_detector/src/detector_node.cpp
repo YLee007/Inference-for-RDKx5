@@ -74,14 +74,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   // Debug Publishers
   debug_ = this->declare_parameter("debug", false);
   debug_timing_every_n_ = this->declare_parameter("debug_timing_every_n", 20);
-  {
-    const auto ret = rcutils_logging_set_logger_level(
-      this->get_logger().get_name(),
-      debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
-    if (ret != RCUTILS_RET_OK) {
-      RCLCPP_WARN(this->get_logger(), "Failed to set logger level, rcutils_ret_t=%d", ret);
-    }
-  }
+  debug_image_scale_ = this->declare_parameter("debug_image_scale", 0.5);
   if (debug_) {
     createDebugPublishers();
   }
@@ -96,12 +89,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   debug_cb_handle_ =
     debug_param_sub_->add_parameter_callback("debug", [this](const rclcpp::Parameter & p) {
       debug_ = p.as_bool();
-      const auto ret = rcutils_logging_set_logger_level(
-        this->get_logger().get_name(),
-        debug_ ? RCUTILS_LOG_SEVERITY_DEBUG : RCUTILS_LOG_SEVERITY_INFO);
-      if (ret != RCUTILS_RET_OK) {
-        RCLCPP_WARN(this->get_logger(), "Failed to set logger level, rcutils_ret_t=%d", ret);
-      }
       debug_ ? createDebugPublishers() : destroyDebugPublishers();
     });
 
@@ -297,7 +284,12 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     auto t_draw1 = clock::now();
     double draw_ms = std::chrono::duration<double, std::milli>(t_draw1 - t_draw0).count();
 
-    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
+    debug_image_scale_ = get_parameter("debug_image_scale").as_double();
+    cv::Mat debug_img = img;
+    if (debug_image_scale_ > 0.0 && debug_image_scale_ < 1.0) {
+      cv::resize(img, debug_img, cv::Size(), debug_image_scale_, debug_image_scale_);
+    }
+    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", debug_img).toImageMsg());
 
     debug_frame_count_++;
     frame_count_since++;
