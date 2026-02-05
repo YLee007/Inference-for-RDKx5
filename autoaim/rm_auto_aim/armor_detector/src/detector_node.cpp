@@ -74,7 +74,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   // Debug Publishers
   debug_ = this->declare_parameter("debug", false);
   debug_timing_every_n_ = this->declare_parameter("debug_timing_every_n", 20);
-  debug_image_scale_ = this->declare_parameter("debug_image_scale", 0.5);
   if (debug_) {
     createDebugPublishers();
   }
@@ -284,12 +283,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     auto t_draw1 = clock::now();
     double draw_ms = std::chrono::duration<double, std::milli>(t_draw1 - t_draw0).count();
 
-    debug_image_scale_ = get_parameter("debug_image_scale").as_double();
-    cv::Mat debug_img = img;
-    if (debug_image_scale_ > 0.0 && debug_image_scale_ < 1.0) {
-      cv::resize(img, debug_img, cv::Size(), debug_image_scale_, debug_image_scale_);
-    }
-    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", debug_img).toImageMsg());
+    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
 
     debug_frame_count_++;
     frame_count_since++;

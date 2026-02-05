@@ -74,7 +74,6 @@ private:
   // Debug information
   bool debug_;
   int debug_timing_every_n_;
-  double debug_image_scale_;
   uint64_t debug_frame_count_ = 0;
   std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
