@@ -44,8 +44,7 @@ def generate_launch_description():
             ],
             output='both',
             emulate_tty=True,
-            ros_arguments=['--ros-args', '--log-level',
-                           'armor_detector:='+launch_params['detector_log_level']],
+            ros_arguments=['--ros-args', '--log-level', 'debug'],
             on_exit=Shutdown(),
         )
 
@@ -62,7 +61,7 @@ def generate_launch_description():
         output='both',
         emulate_tty=True,
         parameters=[node_params, {'target_frame': 'camera_optical_frame'}],
-        ros_arguments=['--log-level', 'armor_tracker:='+launch_params['tracker_log_level']],
+        ros_arguments=['--ros-args', '--log-level', 'debug'],
         condition=IfCondition(with_tracker),
     )
 

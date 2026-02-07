@@ -1,4 +1,4 @@
-#define MODEL_PATH "/home/sunrise/Documents/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb.bin"
+#define MODEL_PATH "/home/sunrise/Inference-for-RDKx5/autoaim/model/yolov5_detect_640x640_bayese_rgb_modified.bin"
 
 #define TESR_IMG_PATH "/home/sunrise/dataset/"
 
@@ -10,7 +10,7 @@
 
 // 推理结果保存路径
 // Path where the inference result will be saved
-#define IMG_SAVE_PATH "./output/"
+#define IMG_SAVE_PATH "/home/sunrise/Inference-for-RDKx5/test_model/output"
 
 // 模型的类别数量, 默认80
 // Number of classes in the model, default is 80
@@ -32,6 +32,12 @@
 // Number of top-K boxes selected by NMS, default is 300
 #define NMS_TOP_K 300
 
+// Number of inference threads
+#define THREAD_NUM 8
+
+// Max number of images to visualize/save when multi-threaded
+#define OUTPUT_MAX 5
+
 // C/C++ Standard Librarys
 #include <iostream>
 #include <vector>
@@ -40,6 +46,10 @@
 #include <cmath>
 #include <numeric>
 #include <string>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <limits>
 
 // Thrid Party Librarys
 #include <opencv2/opencv.hpp>
@@ -213,33 +223,91 @@ int main()
     hbDNNInferCtrlParam infer_ctrl_param;
     HB_DNN_INITIALIZE_INFER_CTRL_PARAM(&infer_ctrl_param);
 
-    for (const auto &img_file : img_paths)
-    {
+    struct ThreadStats {
+        std::mutex mutex;
+        double total_latency_ms = 0.0;
+        double min_latency_ms = std::numeric_limits<double>::max();
+        double max_latency_ms = 0.0;
+        int finished = 0;
+        std::chrono::steady_clock::time_point start;
+    } stats;
+
+    const int thread_num = THREAD_NUM;
+    const bool verbose = (thread_num <= 1);
+    const int print_interval = 200;
+    std::atomic<int> saved_count{0};
+
+    auto update_stats = [&](double infer_ms) {
+        std::lock_guard<std::mutex> lock(stats.mutex);
+        stats.total_latency_ms += infer_ms;
+        if (infer_ms > stats.max_latency_ms) stats.max_latency_ms = infer_ms;
+        if (infer_ms < stats.min_latency_ms) stats.min_latency_ms = infer_ms;
+        stats.finished++;
+        if (stats.finished % print_interval == 0) {
+            auto now = std::chrono::steady_clock::now();
+            double elapsed_s = std::chrono::duration<double>(now - stats.start).count();
+            double fps = (elapsed_s > 0.0) ? (stats.finished / elapsed_s) : 0.0;
+            std::cout << "Frame count: " << stats.finished
+                      << ",  Average latency: " << (stats.total_latency_ms / stats.finished)
+                      << " ms,  max latency: " << stats.max_latency_ms
+                      << " ms,  min latency: " << stats.min_latency_ms
+                      << " ms,  FPS: " << fps << std::endl;
+        }
+    };
+
+    struct ThreadBuffers {
+        hbDNNTensor input;
+        std::vector<hbDNNTensor> output;
+    };
+
+    auto init_buffers = [&]() {
+        ThreadBuffers buffers;
+        buffers.input.properties = input_properties;
+        hbSysAllocCachedMem(&buffers.input.sysMem[0], int(3 * input_H * input_W));
+        buffers.output.resize(output_count);
+        for (int i = 0; i < output_count; i++) {
+            hbDNNTensorProperties &output_properties = buffers.output[i].properties;
+            hbDNNGetOutputTensorProperties(&output_properties, dnn_handle, i);
+            hbSysMem &mem = buffers.output[i].sysMem[0];
+            hbSysAllocCachedMem(&mem, output_properties.alignedByteSize);
+        }
+        return buffers;
+    };
+
+    auto free_buffers = [&](ThreadBuffers &buffers) {
+        hbSysFreeMem(&(buffers.input.sysMem[0]));
+        for (int i = 0; i < output_count; ++i) {
+            hbSysFreeMem(&(buffers.output[i].sysMem[0]));
+        }
+    };
+
+    auto process_one = [&](const std::string &img_file, ThreadBuffers &buffers) -> bool {
         float y_scale = 1.0;
         float x_scale = 1.0;
         int x_shift = 0;
         int y_shift = 0;
 
         cv::Mat img = cv::imread(img_file);
-        if (img.empty())
-        {
-            std::cerr << "Failed to read image: " << img_file << std::endl;
-            continue;
+        if (img.empty()) {
+            if (verbose) {
+                std::cerr << "Failed to read image: " << img_file << std::endl;
+            }
+            return false;
         }
-        std::cout << "img path: " << img_file << std::endl;
-        std::cout << "img (cols, rows, channels): (";
-        std::cout << img.rows << ", ";
-        std::cout << img.cols << ", ";
-        std::cout << img.channels() << ")" << std::endl;
+        if (verbose) {
+            std::cout << "img path: " << img_file << std::endl;
+            std::cout << "img (cols, rows, channels): (";
+            std::cout << img.rows << ", ";
+            std::cout << img.cols << ", ";
+            std::cout << img.channels() << ")" << std::endl;
+        }
 
         cv::Mat resize_img;
-        if (PREPROCESS_TYPE == LETTERBOX_TYPE)
-        {
-            begin_time = std::chrono::system_clock::now();
+        if (PREPROCESS_TYPE == LETTERBOX_TYPE) {
+            if (verbose) begin_time = std::chrono::system_clock::now();
             x_scale = std::min(1.0 * input_H / img.rows, 1.0 * input_W / img.cols);
             y_scale = x_scale;
-            if (x_scale <= 0 || y_scale <= 0)
-            {
+            if (x_scale <= 0 || y_scale <= 0) {
                 throw std::runtime_error("Invalid scale factor.");
             }
 
@@ -253,13 +321,20 @@ int main()
 
             cv::Size targetSize(new_w, new_h);
             cv::resize(img, resize_img, targetSize);
-            cv::copyMakeBorder(resize_img, resize_img, y_shift, y_other, x_shift, x_other, cv::BORDER_CONSTANT, cv::Scalar(127, 127, 127));
+            cv::copyMakeBorder(resize_img, resize_img, y_shift, y_other, x_shift, x_other,
+                               cv::BORDER_CONSTANT, cv::Scalar(127, 127, 127));
 
-            std::cout << "\033[31m pre process (LetterBox) time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
-        }
-        else if (PREPROCESS_TYPE == RESIZE_TYPE)
-        {
-            begin_time = std::chrono::system_clock::now();
+            if (verbose) {
+                std::cout << "\033[31m pre process (LetterBox) time = " << std::fixed
+                          << std::setprecision(2)
+                          << std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::system_clock::now() - begin_time)
+                                 .count() /
+                                 1000.0
+                          << " ms\033[0m" << std::endl;
+            }
+        } else if (PREPROCESS_TYPE == RESIZE_TYPE) {
+            if (verbose) begin_time = std::chrono::system_clock::now();
 
             cv::Size targetSize(input_W, input_H);
             cv::resize(img, resize_img, targetSize);
@@ -269,47 +344,74 @@ int main()
             y_shift = 0;
             x_shift = 0;
 
-            std::cout << "\033[31m pre process (Resize) time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
+            if (verbose) {
+                std::cout << "\033[31m pre process (Resize) time = " << std::fixed
+                          << std::setprecision(2)
+                          << std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::system_clock::now() - begin_time)
+                                 .count() /
+                                 1000.0
+                          << " ms\033[0m" << std::endl;
+            }
         }
-        std::cout << "y_scale = " << y_scale << ", ";
-        std::cout << "x_scale = " << x_scale << std::endl;
-        std::cout << "y_shift = " << y_shift << ", ";
-        std::cout << "x_shift = " << x_shift << std::endl;
+        if (verbose) {
+            std::cout << "y_scale = " << y_scale << ", ";
+            std::cout << "x_scale = " << x_scale << std::endl;
+            std::cout << "y_shift = " << y_shift << ", ";
+            std::cout << "x_shift = " << x_shift << std::endl;
+        }
 
-        begin_time = std::chrono::system_clock::now();
+        if (verbose) begin_time = std::chrono::system_clock::now();
         uint8_t *data_u8{reinterpret_cast<uint8_t *>(resize_img.ptr<uint8_t>())};
-        int8_t *data_s8{reinterpret_cast<int8_t *>(input.sysMem[0].virAddr)};
+        int8_t *data_s8{reinterpret_cast<int8_t *>(buffers.input.sysMem[0].virAddr)};
 
-        for (int h = 0; h < input_H; h++)
-        {
-            for (int w = 0; w < input_W; w++)
-            {
-                data_s8[(0 * input_H * input_W) + h * input_W + w] = static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 2] - 128); // R
-                data_s8[(1 * input_H * input_W) + h * input_W + w] = static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 1] - 128); // G
-                data_s8[(2 * input_H * input_W) + h * input_W + w] = static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 0] - 128); // B
+        for (int h = 0; h < input_H; h++) {
+            for (int w = 0; w < input_W; w++) {
+                data_s8[(0 * input_H * input_W) + h * input_W + w] =
+                    static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 2] - 128);
+                data_s8[(1 * input_H * input_W) + h * input_W + w] =
+                    static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 1] - 128);
+                data_s8[(2 * input_H * input_W) + h * input_W + w] =
+                    static_cast<int8_t>(data_u8[h * input_W * 3 + w * 3 + 0] - 128);
             }
         }
 
-        std::cout << "\033[31m (u8-128)->s8 time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
+        if (verbose) {
+            std::cout << "\033[31m (u8-128)->s8 time = " << std::fixed
+                      << std::setprecision(2)
+                      << std::chrono::duration_cast<std::chrono::microseconds>(
+                             std::chrono::system_clock::now() - begin_time)
+                             .count() /
+                             1000.0
+                      << " ms\033[0m" << std::endl;
+        }
 
-        begin_time = std::chrono::system_clock::now();
+        hbSysFlushMem(&buffers.input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
 
-        hbSysFlushMem(&input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
-
+        auto infer_start = std::chrono::steady_clock::now();
         hbDNNTaskHandle_t task_handle = nullptr;
-        hbDNNInfer(&task_handle, &output, &input, dnn_handle, &infer_ctrl_param);
-
+        hbDNNTensor *out_ptr = buffers.output.data();
+        hbDNNInfer(&task_handle, &out_ptr, &buffers.input, dnn_handle, &infer_ctrl_param);
         hbDNNWaitTaskDone(task_handle, 0);
-        std::cout << "\033[31m forward time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
+        auto infer_end = std::chrono::steady_clock::now();
+        double infer_ms =
+            std::chrono::duration_cast<std::chrono::microseconds>(infer_end - infer_start)
+                .count() /
+            1000.0;
+
+        if (verbose) {
+            std::cout << "\033[31m forward time = " << std::fixed << std::setprecision(2)
+                      << infer_ms << " ms\033[0m" << std::endl;
+        }
 
         // 7. YOLO 后处理（参考 OpenvinoInfer.cpp）
-        begin_time = std::chrono::system_clock::now();
+        if (verbose) begin_time = std::chrono::system_clock::now();
 
         const float conf_thr = SCORE_THRESHOLD;
         const float nms_thr = NMS_THRESHOLD;
-        const int detect_color = -1; // -1 保留红/蓝，丢弃灰/紫
+        const int detect_color = -1;
 
-        hbDNNTensor &pp_output = output[0];
+        hbDNNTensor &pp_output = buffers.output[0];
         hbSysFlushMem(&(pp_output.sysMem[0]), HB_SYS_MEM_CACHE_INVALIDATE);
 
         auto &vshape = pp_output.properties.validShape;
@@ -320,67 +422,56 @@ int main()
             shift0 = pp_output.properties.shift.shiftData[0];
         if (qtype == SCALE && pp_output.properties.scale.scaleData)
             scale0 = pp_output.properties.scale.scaleData[0];
-        std::cout << "[DEBUG] output quantiType=" << qtype
-                  << " shift[0]=" << shift0
-                  << " scale[0]=" << scale0 << std::endl;
-        // Print output tensor shape info
-        std::cout << "[DEBUG] output validShape numDim=" << vshape.numDimensions;
-        for (int i = 0; i < vshape.numDimensions; ++i)
-            std::cout << " dim" << i << "=" << vshape.dimensionSize[i];
-        std::cout << std::endl;
+        if (verbose) {
+            std::cout << "[DEBUG] output quantiType=" << qtype
+                      << " shift[0]=" << shift0
+                      << " scale[0]=" << scale0 << std::endl;
+            std::cout << "[DEBUG] output validShape numDim=" << vshape.numDimensions;
+            for (int i = 0; i < vshape.numDimensions; ++i)
+                std::cout << " dim" << i << "=" << vshape.dimensionSize[i];
+            std::cout << std::endl;
+        }
 
         int nd = vshape.numDimensions;
         int rows = 0;
         int cols = 0;
-        // Infer rows/cols based on common layouts
-        if (nd == 4)
-        {
-            // Common YOLO export: (1, N, 22, 1)
+        if (nd == 4) {
             rows = static_cast<int>(vshape.dimensionSize[1]);
             cols = static_cast<int>(vshape.dimensionSize[2]);
-        }
-        else if (nd == 3)
-        {
+        } else if (nd == 3) {
             rows = static_cast<int>(vshape.dimensionSize[1]);
             cols = static_cast<int>(vshape.dimensionSize[2]);
-        }
-        else if (nd == 2)
-        {
+        } else if (nd == 2) {
             rows = static_cast<int>(vshape.dimensionSize[0]);
             cols = static_cast<int>(vshape.dimensionSize[1]);
-        }
-        else
-        {
-            std::cout << "Unsupported tensor dims: " << nd << std::endl;
+        } else {
+            if (verbose) std::cout << "Unsupported tensor dims: " << nd << std::endl;
             hbDNNReleaseTask(task_handle);
-            continue;
+            return false;
         }
 
-        // Fallback reshape if cols still incorrect
-        if (cols != 22)
-        {
+        if (cols != 22) {
             int64_t total = 1;
             for (int i = 0; i < nd; ++i)
                 total *= vshape.dimensionSize[i];
-            if (total % 22 == 0)
-            {
+            if (total % 22 == 0) {
                 cols = 22;
                 rows = static_cast<int>(total / 22);
             }
         }
-        if (cols != 22)
-        {
-            std::cout << "Expect 22 columns, got " << cols << " (nd=" << nd << ")" << std::endl;
+        if (cols != 22) {
+            if (verbose) {
+                std::cout << "Expect 22 columns, got " << cols << " (nd=" << nd << ")"
+                          << std::endl;
+            }
             hbDNNReleaseTask(task_handle);
-            continue;
+            return false;
         }
 
-        // Dequantize output if needed; otherwise use raw float
         float *data = nullptr;
         int64_t total_elems = static_cast<int64_t>(rows) * static_cast<int64_t>(cols);
         std::vector<float> out;
-        if (qtype == SHIFT)
-        {
+        if (qtype == SHIFT) {
             out.resize(total_elems);
             const int8_t *src = reinterpret_cast<int8_t *>(pp_output.sysMem[0].virAddr);
             int shift = (pp_output.properties.shift.shiftData ? pp_output.properties.shift.shiftData[0] : 0);
@@ -388,39 +479,33 @@ int main()
             for (int64_t i = 0; i < total_elems; ++i)
                 out[i] = src[i] * scale;
             data = out.data();
-        }
-        else if (qtype == SCALE)
-        {
+        } else if (qtype == SCALE) {
             out.resize(total_elems);
             const int8_t *src = reinterpret_cast<int8_t *>(pp_output.sysMem[0].virAddr);
             float scale = (pp_output.properties.scale.scaleData ? pp_output.properties.scale.scaleData[0] : 1.0f);
             for (int64_t i = 0; i < total_elems; ++i)
                 out[i] = src[i] * scale;
             data = out.data();
-        }
-        else
-        {
+        } else {
             data = reinterpret_cast<float *>(pp_output.sysMem[0].virAddr);
         }
-        auto sigmoid = [](float x)
-        { return 1.0f / (1.0f + std::exp(-x)); };
+        auto sigmoid = [](float x) { return 1.0f / (1.0f + std::exp(-x)); };
 
-        // Dump first few raw values to inspect layout
-        int dump_vals = std::min<int64_t>(total_elems, 32);
-        std::cout << "[DEBUG] first " << dump_vals << " values:";
-        for (int i = 0; i < dump_vals; ++i)
-            std::cout << " " << data[i];
-        std::cout << std::endl;
+        if (verbose) {
+            int dump_vals = std::min<int64_t>(total_elems, 32);
+            std::cout << "[DEBUG] first " << dump_vals << " values:";
+            for (int i = 0; i < dump_vals; ++i)
+                std::cout << " " << data[i];
+            std::cout << std::endl;
 
-        // Debug: dump first few rows to inspect coordinate scale
-        int dump_rows = std::min(rows, 3);
-        for (int di = 0; di < dump_rows; ++di)
-        {
-            const float *r = data + di * cols;
-            std::cout << "[DEBUG] row" << di << " obj=" << sigmoid(r[8])
-                      << " coords: " << r[0] << "," << r[1] << "," << r[2] << "," << r[3]
-                      << " cls_max=" << *std::max_element(r + 13, r + 22)
-                      << std::endl;
+            int dump_rows = std::min(rows, 3);
+            for (int di = 0; di < dump_rows; ++di) {
+                const float *r = data + di * cols;
+                std::cout << "[DEBUG] row" << di << " obj=" << sigmoid(r[8])
+                          << " coords: " << r[0] << "," << r[1] << "," << r[2] << "," << r[3]
+                          << " cls_max=" << *std::max_element(r + 13, r + 22)
+                          << std::endl;
+            }
         }
 
         float ratio = (x_scale > 0 ? 1.0f / x_scale : 1.0f);
@@ -428,27 +513,22 @@ int main()
         int original_h = img.rows;
         float x_offset = static_cast<float>(x_shift);
         float y_offset = static_cast<float>(y_shift);
-        auto scale_x = [&](float value)
-        {
+        auto scale_x = [&](float value) {
             float scaled = (value - x_offset) * ratio;
-            if (original_w > 0)
-            {
+            if (original_w > 0) {
                 scaled = std::min(std::max(scaled, 0.0f), static_cast<float>(original_w - 1));
             }
             return scaled;
         };
-        auto scale_y = [&](float value)
-        {
+        auto scale_y = [&](float value) {
             float scaled = (value - y_offset) * ratio;
-            if (original_h > 0)
-            {
+            if (original_h > 0) {
                 scaled = std::min(std::max(scaled, 0.0f), static_cast<float>(original_h - 1));
             }
             return scaled;
         };
 
-        struct Detection
-        {
+        struct Detection {
             cv::Rect2f box;
             float class_score;
             float disp_score;
@@ -461,8 +541,7 @@ int main()
         std::vector<cv::Rect> nms_boxes;
         std::vector<float> nms_scores;
 
-        for (int i = 0; i < rows; ++i)
-        {
+        for (int i = 0; i < rows; ++i) {
             const float *r = data + i * cols;
             float obj = sigmoid(r[8]);
             if (obj < conf_thr)
@@ -470,10 +549,8 @@ int main()
 
             int color_idx = 0;
             float color_max = r[9];
-            for (int k = 10; k <= 12; ++k)
-            {
-                if (r[k] > color_max)
-                {
+            for (int k = 10; k <= 12; ++k) {
+                if (r[k] > color_max) {
                     color_max = r[k];
                     color_idx = k - 9;
                 }
@@ -487,16 +564,13 @@ int main()
 
             int cls_idx = 0;
             float cls_max = r[13];
-            for (int k = 14; k <= 21; ++k)
-            {
-                if (r[k] > cls_max)
-                {
+            for (int k = 14; k <= 21; ++k) {
+                if (r[k] > cls_max) {
                     cls_max = r[k];
                     cls_idx = k - 13;
                 }
             }
 
-            // Use raw model outputs as pixel coords on resized input
             float x0 = r[0];
             float y0 = r[1];
             float x1 = r[2];
@@ -528,13 +602,10 @@ int main()
             static const char *num_labels[9] = {"G", "1", "2", "3", "4", "5", "O", "Bs", "Bb"};
             std::string label = num_labels[cls_idx];
             std::string class_name;
-            if (label == "1" || label == "2" || label == "3" || label == "4" || label == "5")
-            {
+            if (label == "1" || label == "2" || label == "3" || label == "4" || label == "5") {
                 class_name = (color_idx == 0 ? "R" : "B");
                 class_name += label;
-            }
-            else
-            {
+            } else {
                 class_name = label;
             }
 
@@ -550,58 +621,112 @@ int main()
         cv::dnn::NMSBoxes(nms_boxes, nms_scores, conf_thr, nms_thr, indices);
         std::vector<Detection> kept;
         kept.reserve(indices.size());
-        for (int idx : indices)
-        {
-            if (idx >= 0 && idx < static_cast<int>(dets.size()))
-            {
+        for (int idx : indices) {
+            if (idx >= 0 && idx < static_cast<int>(dets.size())) {
                 kept.push_back(std::move(dets[idx]));
             }
         }
 
-        std::cout << "Post Process produced " << kept.size() << " detections" << std::endl;
-        std::cout << "\033[31m Post Process time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
+        if (verbose) {
+            std::cout << "Post Process produced " << kept.size() << " detections" << std::endl;
+            std::cout << "\033[31m Post Process time = " << std::fixed
+                      << std::setprecision(2)
+                      << std::chrono::duration_cast<std::chrono::microseconds>(
+                             std::chrono::system_clock::now() - begin_time)
+                             .count() /
+                             1000.0
+                      << " ms\033[0m" << std::endl;
+        }
 
-        // 8. 渲染
-        begin_time = std::chrono::system_clock::now();
-        for (const auto &det : kept)
-        {
-            cv::rectangle(img, det.box, cv::Scalar(255, 0, 0), LINE_SIZE);
-            std::string text = det.class_name + ": " + std::to_string(static_cast<int>(det.disp_score * 100)) + "%";
-            cv::Point origin(det.box.x, std::max(0.0f, det.box.y - 5));
-            cv::putText(img, text, origin, cv::FONT_HERSHEY_SIMPLEX, FONT_SIZE, cv::Scalar(0, 0, 255), FONT_THICKNESS, cv::LINE_AA);
-            for (const auto &kp : det.kpts)
-            {
-                cv::circle(img, kp, 2, cv::Scalar(0, 255, 0), -1);
+        bool do_visualize = verbose;
+        if (!do_visualize) {
+            int slot = saved_count.fetch_add(1);
+            do_visualize = (slot < OUTPUT_MAX);
+        }
+        if (do_visualize) {
+            if (verbose) begin_time = std::chrono::system_clock::now();
+            for (const auto &det : kept) {
+                cv::rectangle(img, det.box, cv::Scalar(255, 0, 0), LINE_SIZE);
+                std::string text = det.class_name + ": " +
+                                   std::to_string(static_cast<int>(det.disp_score * 100)) + "%";
+                cv::Point origin(det.box.x, std::max(0.0f, det.box.y - 5));
+                cv::putText(img, text, origin, cv::FONT_HERSHEY_SIMPLEX, FONT_SIZE,
+                            cv::Scalar(0, 0, 255), FONT_THICKNESS, cv::LINE_AA);
+                for (const auto &kp : det.kpts) {
+                    cv::circle(img, kp, 2, cv::Scalar(0, 255, 0), -1);
+                }
+            }
+            if (verbose) {
+                std::cout << "\033[31m Draw Result time = " << std::fixed
+                          << std::setprecision(2)
+                          << std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::system_clock::now() - begin_time)
+                                 .count() /
+                                 1000.0
+                          << " ms\033[0m" << std::endl;
+            }
+
+            std::string out_path = IMG_SAVE_PATH;
+            if (img_paths.size() > 1) {
+                std::string base_name = img_file;
+                auto pos = base_name.find_last_of("/\\");
+                std::string dir = (pos == std::string::npos) ? "" : base_name.substr(0, pos + 1);
+                std::string file = (pos == std::string::npos) ? base_name : base_name.substr(pos + 1);
+                auto dot = file.find_last_of('.');
+                std::string stem = (dot == std::string::npos) ? file : file.substr(0, dot);
+                out_path = dir + stem + "_cpp_result.jpg";
+            }
+            cv::imwrite(out_path, img);
+            if (verbose) {
+                std::cout << "[INFO] Saved result to " << out_path << std::endl;
             }
         }
-        std::cout << "\033[31m Draw Result time = " << std::fixed << std::setprecision(2) << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time).count() / 1000.0 << " ms\033[0m" << std::endl;
-
-        std::string out_path = IMG_SAVE_PATH;
-        if (img_paths.size() > 1)
-        {
-            std::string base_name = img_file;
-            auto pos = base_name.find_last_of("/\\");
-            std::string dir = (pos == std::string::npos) ? "" : base_name.substr(0, pos + 1);
-            std::string file = (pos == std::string::npos) ? base_name : base_name.substr(pos + 1);
-            auto dot = file.find_last_of('.');
-            std::string stem = (dot == std::string::npos) ? file : file.substr(0, dot);
-            out_path = dir + stem + "_cpp_result.jpg";
-        }
-        cv::imwrite(out_path, img);
-        std::cout << "[INFO] Saved result to " << out_path << std::endl;
 
         hbDNNReleaseTask(task_handle);
+        update_stats(infer_ms);
+        return true;
+    };
+
+    std::atomic<int> next_index{0};
+    stats.start = std::chrono::steady_clock::now();
+
+    std::vector<std::thread> threads;
+    threads.reserve(thread_num);
+    for (int t = 0; t < thread_num; ++t) {
+        threads.emplace_back([&]() {
+            ThreadBuffers buffers = init_buffers();
+            while (true) {
+                int idx = next_index.fetch_add(1);
+                if (idx >= static_cast<int>(img_paths.size())) {
+                    break;
+                }
+                process_one(img_paths[idx], buffers);
+            }
+            free_buffers(buffers);
+        });
+    }
+    for (auto &th : threads) {
+        th.join();
+    }
+
+    auto end = std::chrono::steady_clock::now();
+    double elapsed_s = std::chrono::duration<double>(end - stats.start).count();
+    double fps = (elapsed_s > 0.0) ? (stats.finished / elapsed_s) : 0.0;
+    if (stats.finished > 0) {
+        std::cout << "\nRunning condition:" << std::endl;
+        std::cout << "  Thread number is: " << thread_num << std::endl;
+        std::cout << "  Frame count   is: " << stats.finished << std::endl;
+        std::cout << "  Program run time: " << elapsed_s * 1000.0 << " ms" << std::endl;
+        std::cout << "Perf result:" << std::endl;
+        std::cout << "  Frame totally latency is: " << stats.total_latency_ms << " ms" << std::endl;
+        std::cout << "  Average    latency    is: "
+                  << (stats.total_latency_ms / stats.finished) << " ms" << std::endl;
+        std::cout << "  Max        latency    is: " << stats.max_latency_ms << " ms" << std::endl;
+        std::cout << "  Min        latency    is: " << stats.min_latency_ms << " ms" << std::endl;
+        std::cout << "  Frame      rate       is: " << fps << " FPS" << std::endl;
     }
 
     std::cout << "[INFO] Inference finished successfully." << std::endl;
-
-    // 11. 释放内存
-    hbSysFreeMem(&(input.sysMem[0]));
-    for (int i = 0; i < output_count; ++i)
-    {
-        hbSysFreeMem(&(output[i].sysMem[0]));
-    }
-    delete[] output;
 
     // 12. 释放模型
     hbDNNRelease(packed_dnn_handle);

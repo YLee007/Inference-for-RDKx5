@@ -1,0 +1,22 @@
+running_condition
+thread_num,1
+core_id,0
+frame_count,12014
+run_time,60005.327
+model_name,"yolov5_detect_640x640_bayese_rgb"
+
+perf_result
+average_latency,4.983044624328613
+FPS,200.21555752875074
+
+processor_latency, avg_time, max_time, min_time
+BPU_inference_time_cost,4.8477740968869645,5.614,4.584,
+CPU_inference_time_cost,0.012097636091226901,0.168,0.004,
+
+task_latency, avg_time, max_time, min_time
+TaskPendingTime,1535437327761.9253,1.8446744072247052e+16,0.0,
+TaskRunningTime,1535437329141.1125,1.844674407224256e+16,0.0,
+
+model nodes, avg_time, max_time, min_time
+BPU_torch_jit-fp32_subgraph_0,4.8477740968869645,5.614,4.584
+Preprocess,0.012097636091226901,0.168,0.004

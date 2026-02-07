@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 
 #include <opencv2/dnn/dnn.hpp>
@@ -46,12 +47,15 @@ struct Yolo::Impl
 {
   Params params;
   Timings last_timings;
+  std::mutex timings_mutex;
 
   hbPackedDNNHandle_t packed = nullptr;
   hbDNNHandle_t model = nullptr;
 
   hbDNNTensor input;
   std::vector<hbDNNTensor> outputs;
+  hbDNNTensorProperties input_props;
+  std::vector<hbDNNTensorProperties> output_props;
 
   int input_h = 0;
   int input_w = 0;
@@ -81,7 +85,6 @@ struct Yolo::Impl
       throw std::runtime_error("Expect 1 input");
     }
 
-    hbDNNTensorProperties input_props;
     hbCheck(hbDNNGetInputTensorProperties(&input_props, model, 0), "hbDNNGetInputTensorProperties");
     if (input_props.tensorLayout != HB_DNN_LAYOUT_NCHW) {
       throw std::runtime_error("Expect NCHW input");
@@ -104,9 +107,11 @@ struct Yolo::Impl
     }
 
     outputs.resize(output_count);
+    output_props.resize(output_count);
     for (int i = 0; i < output_count; ++i) {
       hbDNNTensorProperties & out_props = outputs[i].properties;
       hbCheck(hbDNNGetOutputTensorProperties(&out_props, model, i), "hbDNNGetOutputTensorProperties");
+      output_props[i] = out_props;
       hbSysMem & mem = outputs[i].sysMem[0];
       hbCheck(hbSysAllocCachedMem(&mem, out_props.alignedByteSize), "hbSysAllocCachedMem(output)");
     }
@@ -162,10 +167,47 @@ struct Yolo::Impl
       cv::BORDER_CONSTANT, cv::Scalar(127, 127, 127));
   }
 
-  void fillInputNCHW_RGB_S8Minus128(const cv::Mat & rgb_letterboxed)
+  struct ThreadBuffers
+  {
+    bool initialized = false;
+    hbDNNTensor input;
+    std::vector<hbDNNTensor> outputs;
+
+    ~ThreadBuffers()
+    {
+      if (!initialized) {
+        return;
+      }
+      hbSysFreeMem(&input.sysMem[0]);
+      for (auto & t : outputs) {
+        hbSysFreeMem(&t.sysMem[0]);
+      }
+    }
+  };
+
+  ThreadBuffers & threadBuffers()
+  {
+    thread_local ThreadBuffers buffers;
+    if (!buffers.initialized) {
+      buffers.input.properties = input_props;
+      hbCheck(hbSysAllocCachedMem(&buffers.input.sysMem[0], int(3 * input_h * input_w)),
+              "hbSysAllocCachedMem(input)");
+      buffers.outputs.resize(output_count);
+      for (int i = 0; i < output_count; ++i) {
+        buffers.outputs[i].properties = output_props[i];
+        hbSysMem & mem = buffers.outputs[i].sysMem[0];
+        hbCheck(hbSysAllocCachedMem(&mem, output_props[i].alignedByteSize),
+                "hbSysAllocCachedMem(output)");
+      }
+      buffers.initialized = true;
+    }
+    return buffers;
+  }
+
+  void fillInputNCHW_RGB_S8Minus128(const cv::Mat & rgb_letterboxed, hbDNNTensor & input_tensor)
   {
     uint8_t * data_u8 = const_cast<uint8_t *>(rgb_letterboxed.ptr<uint8_t>());
-    int8_t * data_s8 = reinterpret_cast<int8_t *>(input.sysMem[0].virAddr);
+    int8_t * data_s8 = reinterpret_cast<int8_t *>(input_tensor.sysMem[0].virAddr);
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -401,43 +443,47 @@ std::vector<Yolo::Detection> Yolo::infer(const cv::Mat & rgb)
   cv::Mat letterboxed;
   Impl::letterboxRGB(rgb, impl_->input_w, impl_->input_h, letterboxed, scale, x_shift, y_shift);
 
-  impl_->fillInputNCHW_RGB_S8Minus128(letterboxed);
+  auto & buffers = impl_->threadBuffers();
+  impl_->fillInputNCHW_RGB_S8Minus128(letterboxed, buffers.input);
 
   auto t1 = clock::now();
 
-  hbSysFlushMem(&impl_->input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
+  hbSysFlushMem(&buffers.input.sysMem[0], HB_SYS_MEM_CACHE_CLEAN);
 
   hbDNNInferCtrlParam infer_ctrl_param;
   HB_DNN_INITIALIZE_INFER_CTRL_PARAM(&infer_ctrl_param);
 
   hbDNNTaskHandle_t task_handle = nullptr;
 
-  hbDNNTensor * out_ptrs = impl_->outputs.data();
+  hbDNNTensor * out_ptrs = buffers.outputs.data();
   hbCheck(
-    hbDNNInfer(&task_handle, &out_ptrs, &impl_->input, impl_->model, &infer_ctrl_param),
+    hbDNNInfer(&task_handle, &out_ptrs, &buffers.input, impl_->model, &infer_ctrl_param),
     "hbDNNInfer");
   hbCheck(hbDNNWaitTaskDone(task_handle, 0), "hbDNNWaitTaskDone");
 
   auto t2 = clock::now();
 
   // Expect output[0] contains the proposals with 22 cols
-  auto dets = impl_->postprocess(rgb, impl_->outputs.at(0), scale, x_shift, y_shift);
+  auto dets = impl_->postprocess(rgb, buffers.outputs.at(0), scale, x_shift, y_shift);
 
   auto t3 = clock::now();
 
-  impl_->last_timings.preprocess_ms =
-    std::chrono::duration<double, std::milli>(t1 - t0).count();
-  impl_->last_timings.infer_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
-  impl_->last_timings.postprocess_ms =
-    std::chrono::duration<double, std::milli>(t3 - t2).count();
-  impl_->last_timings.src_w = rgb.cols;
-  impl_->last_timings.src_h = rgb.rows;
-  impl_->last_timings.input_w = impl_->input_w;
-  impl_->last_timings.input_h = impl_->input_h;
-  impl_->last_timings.scale = scale;
-  impl_->last_timings.x_shift = x_shift;
-  impl_->last_timings.y_shift = y_shift;
-  impl_->last_timings.letterbox_used = !(rgb.cols == impl_->input_w && rgb.rows == impl_->input_h);
+  {
+    std::lock_guard<std::mutex> lock(impl_->timings_mutex);
+    impl_->last_timings.preprocess_ms =
+      std::chrono::duration<double, std::milli>(t1 - t0).count();
+    impl_->last_timings.infer_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+    impl_->last_timings.postprocess_ms =
+      std::chrono::duration<double, std::milli>(t3 - t2).count();
+    impl_->last_timings.src_w = rgb.cols;
+    impl_->last_timings.src_h = rgb.rows;
+    impl_->last_timings.input_w = impl_->input_w;
+    impl_->last_timings.input_h = impl_->input_h;
+    impl_->last_timings.scale = scale;
+    impl_->last_timings.x_shift = x_shift;
+    impl_->last_timings.y_shift = y_shift;
+    impl_->last_timings.letterbox_used = !(rgb.cols == impl_->input_w && rgb.rows == impl_->input_h);
+  }
 
   hbDNNReleaseTask(task_handle);
   return dets;

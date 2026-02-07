@@ -1,0 +1,52 @@
+{
+  "perf_result": {
+    "FPS": 200.21555752875074,
+    "average_latency": 4.983044624328613
+  },
+  "running_condition": {
+    "core_id": 0,
+    "frame_count": 12014,
+    "model_name": "yolov5_detect_640x640_bayese_rgb",
+    "run_time": 60005.327,
+    "thread_num": 1
+  }
+}
+***
+{
+  "model_latency": {
+    "BPU_torch_jit-fp32_subgraph_0": {
+      "avg_time": 4.8477740968869645,
+      "max_time": 5.614,
+      "min_time": 4.584
+    },
+    "Preprocess": {
+      "avg_time": 0.012097636091226901,
+      "max_time": 0.168,
+      "min_time": 0.004
+    }
+  },
+  "processor_latency": {
+    "BPU_inference_time_cost": {
+      "avg_time": 4.8477740968869645,
+      "max_time": 5.614,
+      "min_time": 4.584
+    },
+    "CPU_inference_time_cost": {
+      "avg_time": 0.012097636091226901,
+      "max_time": 0.168,
+      "min_time": 0.004
+    }
+  },
+  "task_latency": {
+    "TaskPendingTime": {
+      "avg_time": 1535437327761.9253,
+      "max_time": 1.8446744072247052e+16,
+      "min_time": 0.0
+    },
+    "TaskRunningTime": {
+      "avg_time": 1535437329141.1125,
+      "max_time": 1.844674407224256e+16,
+      "min_time": 0.0
+    }
+  }
+}

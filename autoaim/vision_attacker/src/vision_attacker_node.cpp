@@ -147,7 +147,7 @@ double solveTrajectory(double &flyTime, const double x, const double z,
     const int maxIterations = 20;
     const double tolerance = 0.001;
 
-    if (x <= 0 || muzzleSpeed <= 0 || airK <= 0) {
+    if (x < 0 || muzzleSpeed <= 0 || airK <= 0) {
         throw std::invalid_argument("Invalid parameters");
     }
 

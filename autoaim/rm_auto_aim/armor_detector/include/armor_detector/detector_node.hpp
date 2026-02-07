@@ -75,6 +75,9 @@ private:
   bool debug_;
   int debug_timing_every_n_;
   uint64_t debug_frame_count_ = 0;
+  int input_fps_every_n_;
+  rclcpp::Time last_input_stamp_;
+  uint64_t input_frame_count_since_ = 0;
   std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
   image_transport::Publisher result_img_pub_;

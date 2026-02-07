@@ -253,6 +253,30 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   static auto last_fps_time = clock::now();
   static uint64_t frame_count_since = 0;
 
+  if (input_fps_every_n_ > 0) {
+    rclcpp::Time curr_stamp(img_msg->header.stamp);
+    if (curr_stamp.nanoseconds() > 0) {
+      if (last_input_stamp_.nanoseconds() == 0) {
+        last_input_stamp_ = curr_stamp;
+        input_frame_count_since_ = 0;
+      } else {
+        input_frame_count_since_++;
+        if ((input_frame_count_since_ % static_cast<uint64_t>(input_fps_every_n_)) == 0) {
+          const double dt = (curr_stamp - last_input_stamp_).seconds();
+          if (dt > 0.0) {
+            const double fps = static_cast<double>(input_frame_count_since_) / dt;
+            RCLCPP_INFO(
+              this->get_logger(),
+              "Input FPS (by msg stamp): %.2f over %lu frames",
+              fps, static_cast<unsigned long>(input_frame_count_since_));
+          }
+          last_input_stamp_ = curr_stamp;
+          input_frame_count_since_ = 0;
+        }
+      }
+    }
+  }
+
   // Convert ROS img to cv::Mat
   auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
 
