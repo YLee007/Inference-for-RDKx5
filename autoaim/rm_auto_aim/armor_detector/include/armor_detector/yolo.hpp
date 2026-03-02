@@ -21,9 +21,11 @@ public:
   struct Params
   {
     std::string model_path;
-    float score_threshold = 0.30f;
-    float nms_threshold = 0.70f;
+    float score_threshold = 0.65f;
+    float nms_threshold = 0.45f;
     int nms_top_k = 300;
+    // 18 floats: s(3*2), m(3*2), l(3*2)
+    std::vector<float> anchors;
 
     // detect_color: -1 keep red+blue; 0 keep red; 1 keep blue
     int detect_color = -1;
@@ -61,7 +63,12 @@ public:
   Yolo(const Yolo &) = delete;
   Yolo & operator=(const Yolo &) = delete;
 
-  std::vector<Detection> infer(const cv::Mat & rgb);
+  std::vector<Detection> infer(const cv::Mat & bgr);
+  void setDetectColor(int detect_color);
+  void setScoreThreshold(float score_threshold);
+  void setNmsThreshold(float nms_threshold);
+  void setNmsTopK(int nms_top_k);
+  void setAnchors(const std::vector<float> & anchors);
 
   const Timings & lastTimings() const;
 

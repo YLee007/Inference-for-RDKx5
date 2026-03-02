@@ -35,29 +35,28 @@ static std::string format_id(int color_idx, int cls_idx)
 }
 
 Detector::Detector(
-  const int & bin_thres, const int & color, const LightParams & l, const ArmorParams & a,
-  const YoloParams & yolo)
-: binary_thres(bin_thres), detect_color(color), l(l), a(a)
+  const int & color, const YoloParams & yolo)
+: detect_color(color)
 {
-  yolo_params_.model_path = yolo.model_path;
-  yolo_params_.score_threshold = yolo.score_threshold;
-  yolo_params_.nms_threshold = yolo.nms_threshold;
-  yolo_params_.nms_top_k = yolo.nms_top_k;
-  yolo_params_.detect_color = detect_color;
-  yolo_ = std::make_unique<Yolo>(yolo_params_);
+  Yolo::Params yolo_params;
+  yolo_params.model_path = yolo.model_path;
+  yolo_params.score_threshold = yolo.score_threshold;
+  yolo_params.nms_threshold = yolo.nms_threshold;
+  yolo_params.nms_top_k = yolo.nms_top_k;
+  yolo_params.anchors = yolo.anchors;
+  yolo_params.detect_color = detect_color;
+  yolo_ = std::make_unique<Yolo>(yolo_params);
 }
 
 std::vector<Armor> Detector::detect(const cv::Mat & input)
 {
   armors_.clear();
-  lights_.clear();
 
   if (!yolo_) {
     return armors_;
   }
 
-  // Keep filter color in sync with node parameter
-  yolo_params_.detect_color = detect_color;
+  yolo_->setDetectColor(detect_color);
 
   auto dets = yolo_->infer(input);
   armors_.reserve(dets.size());
@@ -99,174 +98,30 @@ std::vector<Armor> Detector::detect(const cv::Mat & input)
   return armors_;
 }
 
+void Detector::setYoloThresholds(float score_threshold, float nms_threshold, int nms_top_k)
+{
+  if (!yolo_) {
+    return;
+  }
+  yolo_->setScoreThreshold(score_threshold);
+  yolo_->setNmsThreshold(nms_threshold);
+  yolo_->setNmsTopK(nms_top_k);
+}
+
+void Detector::setYoloAnchors(const std::vector<float> & anchors)
+{
+  if (!yolo_) {
+    return;
+  }
+  yolo_->setAnchors(anchors);
+}
+
 Yolo::Timings Detector::lastYoloTimings() const
 {
   if (yolo_) {
     return yolo_->lastTimings();
   }
   return Yolo::Timings{};
-}
-
-std::vector<Light> Detector::findLights(const cv::Mat & rgb_img, const cv::Mat & binary_img)
-{
-  using std::vector;
-  vector<vector<cv::Point>> contours;
-  vector<cv::Vec4i> hierarchy;
-  cv::findContours(binary_img, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-  vector<Light> lights;
-  for (const auto & contour : contours) {
-    if (contour.size() < 5) continue;
-
-    auto b_rect = cv::boundingRect(contour);
-    auto r_rect = cv::minAreaRect(contour);
-    cv::Mat mask = cv::Mat::zeros(b_rect.size(), CV_8UC1);
-    std::vector<cv::Point> mask_contour;
-    for (const auto & p : contour) {
-      mask_contour.emplace_back(p - cv::Point(b_rect.x, b_rect.y));
-    }
-    cv::fillPoly(mask, {mask_contour}, 255);
-    std::vector<cv::Point> points;
-    cv::findNonZero(mask, points);
-    // points / rotated rect area
-    bool is_fill_rotated_rect =
-      points.size() / (r_rect.size.width * r_rect.size.height) > l.min_fill_ratio;
-    cv::Vec4f return_param;
-    cv::fitLine(points, return_param, cv::DIST_L2, 0, 0.01, 0.01);
-    cv::Point2f top, bottom;
-    double angle_k;
-    if (int(return_param[0] * 100) == 100 || int(return_param[1] * 100) == 0) {
-      top = cv::Point2f(b_rect.x + b_rect.width / 2, b_rect.y);
-      bottom = cv::Point2f(b_rect.x + b_rect.width / 2, b_rect.y + b_rect.height);
-      angle_k = 0;
-    } else {
-      auto k = return_param[1] / return_param[0];
-      auto b = (return_param[3] + b_rect.y) - k * (return_param[2] + b_rect.x);
-      top = cv::Point2f((b_rect.y - b) / k, b_rect.y);
-      bottom = cv::Point2f((b_rect.y + b_rect.height - b) / k, b_rect.y + b_rect.height);
-      angle_k = std::atan(k) / CV_PI * 180 - 90;
-      if (angle_k > 90) {
-        angle_k = 180 - angle_k;
-      }
-    }
-    auto light = Light(b_rect, top, bottom, points.size(), angle_k);
-
-    if (isLight(light) && is_fill_rotated_rect) {
-      auto rect = light;
-      if (  // Avoid assertion failed
-        0 <= rect.x && 0 <= rect.width && rect.x + rect.width <= rgb_img.cols && 0 <= rect.y &&
-        0 <= rect.height && rect.y + rect.height <= rgb_img.rows) {
-        int sum_r = 0, sum_b = 0;
-        auto roi = rgb_img(rect);
-        // Iterate through the ROI
-        for (int i = 0; i < roi.rows; i++) {
-          for (int j = 0; j < roi.cols; j++) {
-            if (cv::pointPolygonTest(contour, cv::Point2f(j + rect.x, i + rect.y), false) >= 0) {
-              // if point is inside contour
-              sum_r += roi.at<cv::Vec3b>(i, j)[0];
-              sum_b += roi.at<cv::Vec3b>(i, j)[2];
-            }
-          }
-        }
-        // Sum of red pixels > sum of blue pixels ?
-        light.color = sum_r > sum_b ? RED : BLUE;
-        lights.emplace_back(light);
-      }
-    }
-  }
-
-  return lights;
-}
-
-bool Detector::isLight(const Light & light)
-{
-  // The ratio of light (short side / long side)
-  float ratio = light.width / light.length;
-  bool ratio_ok = l.min_ratio < ratio && ratio < l.max_ratio;
-
-  bool angle_ok = light.tilt_angle < l.max_angle;
-
-  bool is_light = ratio_ok && angle_ok;
-
-  return is_light;
-}
-
-std::vector<Armor> Detector::matchLights(const std::vector<Light> & lights)
-{
-  std::vector<Armor> armors;
-
-  // Loop all the pairing of lights
-  for (auto light_1 = lights.begin(); light_1 != lights.end(); light_1++) {
-    for (auto light_2 = light_1 + 1; light_2 != lights.end(); light_2++) {
-      if (light_1->color != detect_color || light_2->color != detect_color) continue;
-
-      if (containLight(*light_1, *light_2, lights)) {
-        continue;
-      }
-
-      auto type = isArmor(*light_1, *light_2);
-      if (type != ArmorType::INVALID) {
-        auto armor = Armor(*light_1, *light_2);
-        armor.type = type;
-        armors.emplace_back(armor);
-      }
-    }
-  }
-
-  return armors;
-}
-
-// Check if there is another light in the boundingRect formed by the 2 lights
-bool Detector::containLight(
-  const Light & light_1, const Light & light_2, const std::vector<Light> & lights)
-{
-  auto points = std::vector<cv::Point2f>{light_1.top, light_1.bottom, light_2.top, light_2.bottom};
-  auto bounding_rect = cv::boundingRect(points);
-
-  for (const auto & test_light : lights) {
-    if (test_light.center == light_1.center || test_light.center == light_2.center) continue;
-
-    if (
-      bounding_rect.contains(test_light.top) || bounding_rect.contains(test_light.bottom) ||
-      bounding_rect.contains(test_light.center)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-ArmorType Detector::isArmor(const Light & light_1, const Light & light_2)
-{
-  // Ratio of the length of 2 lights (short side / long side)
-  float light_length_ratio = light_1.length < light_2.length ? light_1.length / light_2.length
-                                                             : light_2.length / light_1.length;
-  bool light_ratio_ok = light_length_ratio > a.min_light_ratio;
-
-  // Distance between the center of 2 lights (unit : light length)
-  float avg_light_length = (light_1.length + light_2.length) / 2;
-  float center_distance = cv::norm(light_1.center - light_2.center) / avg_light_length;
-  bool center_distance_ok = (a.min_small_center_distance <= center_distance &&
-                             center_distance < a.max_small_center_distance) ||
-                            (a.min_large_center_distance <= center_distance &&
-                             center_distance < a.max_large_center_distance);
-
-  // Angle of light center connection
-  cv::Point2f diff = light_1.center - light_2.center;
-  float angle = std::abs(std::atan(diff.y / diff.x)) / CV_PI * 180;
-  bool angle_ok = angle < a.max_angle;
-
-  bool is_armor = light_ratio_ok && center_distance_ok && angle_ok;
-
-  // Judge armor type
-  ArmorType type;
-  if (is_armor) {
-    type = center_distance > a.min_large_center_distance ? ArmorType::LARGE : ArmorType::SMALL;
-  } else {
-    type = ArmorType::INVALID;
-  }
-
-  return type;
 }
 
 void Detector::drawResults(cv::Mat & img)

@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -193,40 +192,27 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 
 std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
 {
-  rcl_interfaces::msg::ParameterDescriptor param_desc;
-  param_desc.integer_range.resize(1);
-  param_desc.integer_range[0].step = 1;
-  param_desc.integer_range[0].from_value = 0;
-  param_desc.integer_range[0].to_value = 255;
-  int binary_thres = declare_parameter("binary_thres", 160, param_desc);
-
-  param_desc.description = "0-RED, 1-BLUE";
-  param_desc.integer_range[0].from_value = 0;
-  param_desc.integer_range[0].to_value = 1;
-  auto detect_color = declare_parameter("detect_color", RED, param_desc);
-
-  Detector::LightParams l_params = {
-    .min_ratio = declare_parameter("light.min_ratio", 0.1),
-    .max_ratio = declare_parameter("light.max_ratio", 0.4),
-    .max_angle = declare_parameter("light.max_angle", 35.0),
-    .min_fill_ratio = declare_parameter("light.min_fill_ratio", 0.8),
-  };
-
-  Detector::ArmorParams a_params = {
-    .min_light_ratio = declare_parameter("armor.min_light_ratio", 0.7),
-    .min_small_center_distance = declare_parameter("armor.min_small_center_distance", 0.8),
-    .max_small_center_distance = declare_parameter("armor.max_small_center_distance", 3.2),
-    .min_large_center_distance = declare_parameter("armor.min_large_center_distance", 3.2),
-    .max_large_center_distance = declare_parameter("armor.max_large_center_distance", 5.5),
-    .max_angle = declare_parameter("armor.max_angle", 35.0)};
+  auto detect_color = declare_parameter("detect_color", RED);
 
   // YOLO params
   Detector::YoloParams yolo_params;
   yolo_params.model_path = this->declare_parameter("yolo.model_path", std::string(""));
   yolo_params.score_threshold =
-    static_cast<float>(this->declare_parameter("yolo.score_threshold", 0.30));
-  yolo_params.nms_threshold = static_cast<float>(this->declare_parameter("yolo.nms_threshold", 0.70));
+    static_cast<float>(this->declare_parameter("yolo.score_threshold", 0.65));
+  yolo_params.nms_threshold = static_cast<float>(this->declare_parameter("yolo.nms_threshold", 0.45));
   yolo_params.nms_top_k = this->declare_parameter("yolo.nms_top_k", 300);
+  yolo_nms_top_k_ = yolo_params.nms_top_k;
+  {
+    const std::vector<double> default_anchors = {
+      10.0, 13.0, 16.0, 30.0, 33.0, 23.0,
+      30.0, 61.0, 62.0, 45.0, 59.0, 119.0,
+      116.0, 90.0, 156.0, 198.0, 373.0, 326.0};
+    const auto anchors = this->declare_parameter("yolo.anchors", default_anchors);
+    yolo_params.anchors.reserve(anchors.size());
+    for (const auto & a : anchors) {
+      yolo_params.anchors.emplace_back(static_cast<float>(a));
+    }
+  }
 
   {
     if (yolo_params.model_path.empty()) {
@@ -243,7 +229,7 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
     }
   }
 
-  return std::make_unique<Detector>(binary_thres, detect_color, l_params, a_params, yolo_params);
+  return std::make_unique<Detector>(detect_color, yolo_params);
 }
 
 std::vector<Armor> ArmorDetectorNode::detectArmors(
@@ -253,36 +239,15 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
   static auto last_fps_time = clock::now();
   static uint64_t frame_count_since = 0;
 
-  if (input_fps_every_n_ > 0) {
-    rclcpp::Time curr_stamp(img_msg->header.stamp);
-    if (curr_stamp.nanoseconds() > 0) {
-      if (last_input_stamp_.nanoseconds() == 0) {
-        last_input_stamp_ = curr_stamp;
-        input_frame_count_since_ = 0;
-      } else {
-        input_frame_count_since_++;
-        if ((input_frame_count_since_ % static_cast<uint64_t>(input_fps_every_n_)) == 0) {
-          const double dt = (curr_stamp - last_input_stamp_).seconds();
-          if (dt > 0.0) {
-            const double fps = static_cast<double>(input_frame_count_since_) / dt;
-            RCLCPP_INFO(
-              this->get_logger(),
-              "Input FPS (by msg stamp): %.2f over %lu frames",
-              fps, static_cast<unsigned long>(input_frame_count_since_));
-          }
-          last_input_stamp_ = curr_stamp;
-          input_frame_count_since_ = 0;
-        }
-      }
-    }
-  }
-
   // Convert ROS img to cv::Mat
-  auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
+  auto img = cv_bridge::toCvShare(img_msg, "bgr8")->image;
 
   // Update params
-  detector_->binary_thres = get_parameter("binary_thres").as_int();
   detector_->detect_color = get_parameter("detect_color").as_int();
+  detector_->setYoloThresholds(
+    static_cast<float>(get_parameter("yolo.score_threshold").as_double()),
+    static_cast<float>(get_parameter("yolo.nms_threshold").as_double()),
+    yolo_nms_top_k_);
 
   auto armors = detector_->detect(img);
   const auto yolo_t = detector_->lastYoloTimings();
@@ -307,7 +272,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     auto t_draw1 = clock::now();
     double draw_ms = std::chrono::duration<double, std::milli>(t_draw1 - t_draw0).count();
 
-    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
+    result_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "bgr8", img).toImageMsg());
 
     debug_frame_count_++;
     frame_count_since++;
