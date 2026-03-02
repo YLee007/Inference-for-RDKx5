@@ -4,3 +4,6 @@ install/
 autoaim/MvSdkLog/
 .vscode/
 autoaim/output
+RGB*
+RobotDetection*
+docs/
