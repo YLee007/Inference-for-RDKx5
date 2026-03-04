@@ -40,7 +40,7 @@
     ekf:
       sigma2_q_xyz: 1.0
       sigma2_q_yaw: 50.0
-      sigma2_q_r: 500.0
+      sigma2_q_r: 40.0
 
       r_xyz_factor: 4e-4
       r_yaw: 5e-2
