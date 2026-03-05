@@ -36,6 +36,8 @@
     #define DEFAULT_MODEL_PATH "/home/sunrise/Inference-for-RDKx5/autoaim/model/yolov5_nv12_0526_modifier.bin"  // 默认模型路径
     #define DEFAULT_SINGLE_IMAGE_PATH "/home/sunrise/dataset/000031.jpg"  // 单图模式输入图像
     #define DEFAULT_OUTPUT_IMAGE_PATH "cpp_result.jpg"                  // 单图模式输出图像
+    #define DEFAULT_VIDEO_PATH "/home/ylee/sp_vision_25/assets/demo.avi"         // 视频模式输入路径
+    #define DEFAULT_OUTPUT_VIDEO_PATH "cpp_result.mp4"                   // 视频模式输出路径
     #define DEFAULT_CLASSES_NUM CLASS_CLASS_COUNT  // 默认类别数量
     #define DEFAULT_NMS_THRESHOLD 0.45f    // 非极大值抑制阈值
     #define DEFAULT_SCORE_THRESHOLD 0.65f  // 置信度阈值（对齐 infer_onnx.py）
@@ -48,7 +50,7 @@
     #define CLASS_CLASS_COUNT 9
 
     // 运行模式选择
-    #define DETECT_MODE 0    // 检测模式: 0-单张图片, 1-实时检测
+    #define DETECT_MODE 1    // 检测模式: 0-单张图片, 1-实时检测
     #define ENABLE_DRAW 1    // 绘图开关: 0-禁用, 1-启用
     #define LOAD_FROM_DDR 1  // 模型加载方式: 0-从文件加载, 1-从内存加载
 
@@ -726,12 +728,12 @@
                                                 : std::string("unknown_class");
 
             std::cout << "  " << color_name << " " << class_name
-                    << ", confidence=" << std::fixed << std::setprecision(2) << det.confidence
-                    << ", polygon=[(" << det.polygon[0].x << ", " << det.polygon[0].y << "), "
-                    << "(" << det.polygon[1].x << ", " << det.polygon[1].y << "), "
-                    << "(" << det.polygon[2].x << ", " << det.polygon[2].y << "), "
-                    << "(" << det.polygon[3].x << ", " << det.polygon[3].y << ")]"
-                    << std::endl;
+                << ", confidence=" << std::fixed << std::setprecision(2) << det.confidence
+                << ", bbox4pts=[(" << det.polygon[0].x << ", " << det.polygon[0].y << "), "
+                << "(" << det.polygon[1].x << ", " << det.polygon[1].y << "), "
+                << "(" << det.polygon[2].x << ", " << det.polygon[2].y << "), "
+                << "(" << det.polygon[3].x << ", " << det.polygon[3].y << ")]"
+                << std::endl;
         }
         std::cout << "========================================\n" << std::endl;
     }
@@ -739,6 +741,7 @@
     // 绘制结果实现
     void BPU_Detect::DrawResults(cv::Mat& img) {
     #if ENABLE_DRAW
+        int overlay_y = 20;
         for (size_t i = 0; i < nms_indices_.size(); ++i) {
             int idx = nms_indices_[i];
             if (idx < 0 || idx >= static_cast<int>(detections_.size())) {
@@ -782,6 +785,19 @@
 
             cv::putText(img, text, cv::Point(text_x, text_y),
                         cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+
+            std::ostringstream bbox_ss;
+            bbox_ss << "#" << (i + 1) << " ["
+                    << static_cast<int>(det.polygon[0].x) << "," << static_cast<int>(det.polygon[0].y) << "] ["
+                    << static_cast<int>(det.polygon[1].x) << "," << static_cast<int>(det.polygon[1].y) << "] ["
+                    << static_cast<int>(det.polygon[2].x) << "," << static_cast<int>(det.polygon[2].y) << "] ["
+                    << static_cast<int>(det.polygon[3].x) << "," << static_cast<int>(det.polygon[3].y) << "]";
+            if (overlay_y < img.rows - 10) {
+                cv::putText(
+                    img, bbox_ss.str(), cv::Point(10, overlay_y),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.45, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+                overlay_y += 16;
+            }
         }
     #endif
         // 打印检测结果
@@ -863,6 +879,12 @@
                             get_value(static_cast<int>(anchor_idx), 13 + class_id, h, w)) {
                             class_id = i;
                         }
+                    }
+
+                    const float cls_score = Sigmoid(get_value(static_cast<int>(anchor_idx), 13 + class_id, h, w));
+                    confidence *= cls_score;
+                    if (confidence < score_threshold_) {
+                        continue;
                     }
 
                     std::array<cv::Point2f, 4> points;
@@ -991,19 +1013,34 @@
         // 实时检测模式
         std::cout << "Real-time detection mode" << std::endl;
         
-        // 打开摄像头
-        cv::VideoCapture cap(0);
+        cv::VideoCapture cap(DEFAULT_VIDEO_PATH);
         if (!cap.isOpened()) {
-            std::cout << "Failed to open camera" << std::endl;
+            std::cout << "Failed to open video: " << DEFAULT_VIDEO_PATH << std::endl;
             return -1;
         }
+
+        const int frame_w = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+        const int frame_h = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+        double video_fps = cap.get(cv::CAP_PROP_FPS);
+        if (video_fps <= 1e-3) {
+            video_fps = 30.0;
+        }
+
+        cv::VideoWriter writer;
+        const int fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
+        writer.open(DEFAULT_OUTPUT_VIDEO_PATH, fourcc, video_fps, cv::Size(frame_w, frame_h));
+        if (!writer.isOpened()) {
+            std::cout << "Failed to open video writer: " << DEFAULT_OUTPUT_VIDEO_PATH << std::endl;
+            return -1;
+        }
+        std::cout << "Saving result video to: " << DEFAULT_OUTPUT_VIDEO_PATH << std::endl;
         
         cv::Mat frame, output_frame;
         while (true) {
             // 读取一帧
             cap >> frame;
             if (frame.empty()) {
-                std::cout << "Failed to read frame" << std::endl;
+                std::cout << "Video finished or failed to read frame" << std::endl;
                 break;
             }
             
@@ -1012,6 +1049,8 @@
                 std::cout << "Detection failed" << std::endl;
                 break;
             }
+
+                writer.write(output_frame);
             
     #if ENABLE_DRAW
             // 显示结果
@@ -1025,10 +1064,11 @@
         }
         
     #if ENABLE_DRAW
-        // 释放摄像头
+        // 释放视频
         cap.release();
         cv::destroyAllWindows();
     #endif
+        writer.release();
     #endif
         
         // 释放资源
