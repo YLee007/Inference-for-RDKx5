@@ -17,7 +17,7 @@ def generate_launch_description():
     from common import node_params, launch_params, robot_state_publisher, tracker_node
     from launch_ros.descriptions import ComposableNode
     from launch_ros.actions import ComposableNodeContainer, Node
-    from launch.actions import TimerAction, Shutdown
+    from launch.actions import TimerAction, Shutdown, SetEnvironmentVariable
     from launch import LaunchDescription
 
     def get_camera_node(package, plugin):
@@ -25,7 +25,7 @@ def generate_launch_description():
             package=package,
             plugin=plugin,
             name='camera_node',
-            parameters=[node_params],
+            parameters=[node_params, {'use_sensor_data_qos': True}],
             extra_arguments=[{'use_intra_process_comms': True}]
         )
 
@@ -34,7 +34,7 @@ def generate_launch_description():
             name='camera_detector_container',
             namespace='',
             package='rclcpp_components',
-            executable='component_container',
+            executable='component_container_mt',
             composable_node_descriptions=[
                 camera_node,
                 ComposableNode(
@@ -47,12 +47,17 @@ def generate_launch_description():
             ],
             output='both',
             emulate_tty=True,
-            ros_arguments=['--ros-args', '--log-level',
+            ros_arguments=['--ros-args', '--log-level', 'warn', '--log-level',
                            'armor_detector:='+launch_params['detector_log_level']],
             on_exit=Shutdown(),
         )
 
     hik_camera_node = get_camera_node('hik_camera', 'hik_camera::HikCameraNode')
+
+    log_warn_and_above = SetEnvironmentVariable(
+        name='RCUTILS_LOGGING_SEVERITY_THRESHOLD',
+        value='WARN'
+    )
 
 
     if (launch_params['camera'] == 'hik'):
@@ -67,15 +72,18 @@ def generate_launch_description():
         package='vision_serial_driver',
         executable='vision_serial_driver_node',
         parameters = [node_params],
+        ros_arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     attacker_node = Node(
         package='vision_attacker',
         executable='vision_attacker_node',
         parameters=[node_params],
+        ros_arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     return LaunchDescription([
+        log_warn_and_above,
         robot_state_publisher,
         cam_detector,
         delay_tracker_node,

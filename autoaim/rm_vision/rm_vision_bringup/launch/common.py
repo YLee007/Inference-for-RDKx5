@@ -16,7 +16,8 @@ robot_state_publisher = Node(
     package='robot_state_publisher',
     executable='robot_state_publisher',
     parameters=[{'robot_description': robot_description,
-                 'publish_frequency': 1000.0}]
+                 'publish_frequency': 1000.0}],
+    ros_arguments=['--ros-args', '--log-level', 'warn']
 )
 
 node_params = os.path.join(
@@ -28,5 +29,5 @@ tracker_node = Node(
     output='both',
     emulate_tty=True,
     parameters=[node_params],
-    ros_arguments=['--log-level', 'armor_tracker:='+launch_params['tracker_log_level']],
+    ros_arguments=['--ros-args', '--log-level', 'armor_tracker:='+launch_params['tracker_log_level']],
 )

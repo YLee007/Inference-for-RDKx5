@@ -4,3 +4,5 @@
 
     exposure_time: 6000
     gain: 32.0
+    flip_horizontal: false
+    flip_vertical: false

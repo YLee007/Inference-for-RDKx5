@@ -2,11 +2,15 @@
 // ROS
 #include <camera_info_manager/camera_info_manager.hpp>
 #include <image_transport/image_transport.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/utilities.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
+
+#include <atomic>
 
 namespace hik_camera
 {
@@ -47,6 +51,7 @@ public:
     camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
 
     declareParameters();
+    applyFlipSettings();
 
     MV_CC_StartGrabbing(camera_handle_);
 
@@ -77,6 +82,11 @@ public:
       while (rclcpp::ok()) {
         nRet = MV_CC_GetImageBuffer(camera_handle_, &out_frame, 1000);
         if (MV_OK == nRet) {
+          image_msg_.height = out_frame.stFrameInfo.nHeight;
+          image_msg_.width = out_frame.stFrameInfo.nWidth;
+          image_msg_.step = out_frame.stFrameInfo.nWidth * 3;
+          image_msg_.data.resize(static_cast<size_t>(image_msg_.width) * image_msg_.height * 3);
+
           convert_param_.pDstBuffer = image_msg_.data.data();
           convert_param_.nDstBufferSize = image_msg_.data.size();
           convert_param_.pSrcData = out_frame.pBufAddr;
@@ -85,11 +95,22 @@ public:
 
           MV_CC_ConvertPixelType(camera_handle_, &convert_param_);
 
+          if (use_software_flip_.load() && (flip_horizontal_.load() || flip_vertical_.load())) {
+            cv::Mat frame(
+              static_cast<int>(image_msg_.height), static_cast<int>(image_msg_.width), CV_8UC3,
+              image_msg_.data.data());
+            int flip_code = 0;
+            if (flip_horizontal_.load() && flip_vertical_.load()) {
+              flip_code = -1;
+            } else if (flip_horizontal_.load()) {
+              flip_code = 1;
+            } else {
+              flip_code = 0;
+            }
+            cv::flip(frame, frame, flip_code);
+          }
+
           image_msg_.header.stamp = this->now();
-          image_msg_.height = out_frame.stFrameInfo.nHeight;
-          image_msg_.width = out_frame.stFrameInfo.nWidth;
-          image_msg_.step = out_frame.stFrameInfo.nWidth * 3;
-          image_msg_.data.resize(image_msg_.width * image_msg_.height * 3);
 
           camera_info_msg_.header = image_msg_.header;
           camera_pub_.publish(image_msg_, camera_info_msg_);
@@ -139,7 +160,7 @@ private:
     double exposure_time = this->declare_parameter("exposure_time", 5000, param_desc);
     MV_CC_SetFloatValue(camera_handle_, "ExposureTime", exposure_time);
     RCLCPP_INFO(this->get_logger(), "Exposure time: %f", exposure_time);
-
+-
     // Gain
     param_desc.description = "Gain";
     MV_CC_GetFloatValue(camera_handle_, "Gain", &f_value);
@@ -148,6 +169,18 @@ private:
     double gain = this->declare_parameter("gain", f_value.fCurValue, param_desc);
     MV_CC_SetFloatValue(camera_handle_, "Gain", gain);
     RCLCPP_INFO(this->get_logger(), "Gain: %f", gain);
+
+    flip_horizontal_.store(this->declare_parameter("flip_horizontal", false));
+    flip_vertical_.store(this->declare_parameter("flip_vertical", false));
+    use_software_flip_.store(false);
+  }
+
+  void applyFlipSettings()
+  {
+    use_software_flip_.store(false);
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Flip in hik_camera is disabled. Use downstream node OpenCV flip if needed.");
   }
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
@@ -168,6 +201,12 @@ private:
           result.successful = false;
           result.reason = "Failed to set gain, status = " + std::to_string(status);
         }
+      } else if (param.get_name() == "flip_horizontal") {
+        flip_horizontal_.store(param.as_bool());
+        applyFlipSettings();
+      } else if (param.get_name() == "flip_vertical") {
+        flip_vertical_.store(param.as_bool());
+        applyFlipSettings();
       } else {
         result.successful = false;
         result.reason = "Unknown parameter: " + param.get_name();
@@ -192,6 +231,10 @@ private:
 
   int fail_conut_ = 0;
   std::thread capture_thread_;
+
+  std::atomic_bool flip_horizontal_{false};
+  std::atomic_bool flip_vertical_{false};
+  std::atomic_bool use_software_flip_{false};
 
   OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
 };

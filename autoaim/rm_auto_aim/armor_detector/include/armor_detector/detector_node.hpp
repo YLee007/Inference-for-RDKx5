@@ -17,8 +17,12 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 
 // STD
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "armor_detector/detector.hpp"
@@ -32,9 +36,12 @@ class ArmorDetectorNode : public rclcpp::Node
 {
 public:
   ArmorDetectorNode(const rclcpp::NodeOptions & options);
+  ~ArmorDetectorNode() override;
 
 private:
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+  void inferenceLoop();
+  void processImage(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
   std::unique_ptr<Detector> initDetector();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
@@ -71,6 +78,14 @@ private:
   // Image subscrpition
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
 
+  // Async inference worker (latest frame only)
+  std::thread infer_thread_;
+  std::mutex infer_mutex_;
+  std::condition_variable infer_cv_;
+  sensor_msgs::msg::Image::ConstSharedPtr pending_img_msg_;
+  bool has_pending_img_ = false;
+  std::atomic<bool> infer_running_{false};
+
   // Debug information
   bool debug_;
   int debug_timing_every_n_;
@@ -80,6 +95,7 @@ private:
   image_transport::Publisher result_img_pub_;
 
   int yolo_nms_top_k_ = 300;
+  int yolo_pre_nms_top_k_ = 500;
 };
 
 }  // namespace rm_auto_aim

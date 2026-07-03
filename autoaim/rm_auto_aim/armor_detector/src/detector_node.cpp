@@ -102,6 +102,18 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
     image_topic, rclcpp::SensorDataQoS().keep_last(1),
     std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+
+  infer_running_.store(true);
+  infer_thread_ = std::thread(&ArmorDetectorNode::inferenceLoop, this);
+}
+
+ArmorDetectorNode::~ArmorDetectorNode()
+{
+  infer_running_.store(false);
+  infer_cv_.notify_all();
+  if (infer_thread_.joinable()) {
+    infer_thread_.join();
+  }
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
@@ -116,6 +128,42 @@ void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)
 {
+  {
+    std::lock_guard<std::mutex> lock(infer_mutex_);
+    pending_img_msg_ = img_msg;
+    has_pending_img_ = true;
+  }
+  infer_cv_.notify_one();
+}
+
+void ArmorDetectorNode::inferenceLoop()
+{
+  while (rclcpp::ok()) {
+    sensor_msgs::msg::Image::ConstSharedPtr img_msg;
+    {
+      std::unique_lock<std::mutex> lock(infer_mutex_);
+      infer_cv_.wait(lock, [this]() {
+        return !infer_running_.load() || has_pending_img_;
+      });
+
+      if (!infer_running_.load() && !has_pending_img_) {
+        return;
+      }
+
+      img_msg = pending_img_msg_;
+      has_pending_img_ = false;
+    }
+
+    processImage(img_msg);
+  }
+}
+
+void ArmorDetectorNode::processImage(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
+{
+  if (!img_msg) {
+    return;
+  }
+
   auto armors = detectArmors(img_msg);
 
   if (pnp_solver_ != nullptr && is_aim_task_) {
@@ -200,7 +248,9 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
   yolo_params.score_threshold =
     static_cast<float>(this->declare_parameter("yolo.score_threshold", 0.65));
   yolo_params.nms_threshold = static_cast<float>(this->declare_parameter("yolo.nms_threshold", 0.45));
+  yolo_params.pre_nms_top_k = this->declare_parameter("yolo.pre_nms_top_k", 500);
   yolo_params.nms_top_k = this->declare_parameter("yolo.nms_top_k", 300);
+  yolo_pre_nms_top_k_ = yolo_params.pre_nms_top_k;
   yolo_nms_top_k_ = yolo_params.nms_top_k;
   {
     const std::vector<double> default_anchors = {
@@ -248,6 +298,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     static_cast<float>(get_parameter("yolo.score_threshold").as_double()),
     static_cast<float>(get_parameter("yolo.nms_threshold").as_double()),
     yolo_nms_top_k_);
+  detector_->setYoloPreNmsTopK(get_parameter("yolo.pre_nms_top_k").as_int());
 
   auto armors = detector_->detect(img);
   const auto yolo_t = detector_->lastYoloTimings();
